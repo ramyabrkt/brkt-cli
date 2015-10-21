@@ -190,9 +190,9 @@ class AWSService(BaseAWSService):
         self.region = None
         self.conn = None
 
-    def connect(self, key_name, region):
-        self.key_name = key_name
+    def connect(self, region, key_name=None):
         self.region = region
+        self.key_name = key_name
         self.conn = boto.vpc.connect_to_region(region)
 
     def connect_as(self, role, region, session_name):

@@ -103,7 +103,7 @@ def main():
         # Connect to AWS.
         aws_svc = service.AWSService(
             session_id, encryptor_ami, default_tags=default_tags)
-        aws_svc.connect(values.key_name, region)
+        aws_svc.connect(region, key_name=values.key_name)
     except NoAuthHandlerFound:
         msg = (
             'Unable to connect to AWS.  Are your AWS_ACCESS_KEY_ID and '
@@ -116,7 +116,10 @@ def main():
         return 1
 
     try:
-        aws_svc.get_key_pair(values.key_name)
+        if values.key_name:
+            # Validate the key pair name.
+            aws_svc.get_key_pair(values.key_name)
+
         if not values.no_validate_ami:
             error = aws_svc.validate_guest_ami(values.ami)
             if error:
