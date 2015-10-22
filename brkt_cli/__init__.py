@@ -24,6 +24,7 @@ import sys
 from boto.exception import EC2ResponseError, NoAuthHandlerFound
 
 from brkt_cli import encrypt_ami
+from brkt_cli import encrypt_ami_args
 from brkt_cli import service
 from brkt_cli import util
 
@@ -50,7 +51,7 @@ def main():
     subparsers = parser.add_subparsers()
 
     encrypt_ami_parser = subparsers.add_parser('encrypt-ami')
-    encrypt_ami.setup_encrypt_ami_args(encrypt_ami_parser)
+    encrypt_ami_args.setup_encrypt_ami_args(encrypt_ami_parser)
 
     argv = sys.argv[1:]
     values = parser.parse_args(argv)
@@ -91,7 +92,7 @@ def main():
     encryptor_ami = values.encryptor_ami
     if not encryptor_ami:
         try:
-            encryptor_ami = encrypt_ami._get_encryptor_ami(region)
+            encryptor_ami = encrypt_ami.get_encryptor_ami(region)
         except:
             log.exception('Failed to get encryptor AMI.')
             return 1
