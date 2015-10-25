@@ -51,7 +51,12 @@ class BaseAWSService(object):
         pass
 
     @abc.abstractmethod
-    def create_tags(self, resource_id, name=None, description=None):
+    def get_instance_by_tags(self, tags):
+        pass
+
+    @abc.abstractmethod
+    def create_tags(self, resource_id, name=None, description=None,
+            source_ami=None):
         pass
 
     @abc.abstractmethod
@@ -79,7 +84,12 @@ class BaseAWSService(object):
         pass
 
     @abc.abstractmethod
-    def create_snapshot(self, volume_id, name=None, description=None):
+    def get_snapshot_by_tags(self, tags):
+        pass
+
+    @abc.abstractmethod
+    def create_snapshot(self, volume_id, name=None, description=None,
+            source_ami=None):
         pass
 
     @abc.abstractmethod
@@ -232,13 +242,23 @@ class AWSService(BaseAWSService):
     def get_instance(self, instance_id):
         return self.conn.get_only_instances([instance_id])[0]
 
+    def get_instance_by_tags(self, tags):
+        matching_resources = self.conn.get_only_instances(
+            filters={('tag:%s' % key):value for key,value in tags.iteritems()}
+        )
+        if matching_resources:
+            return matching_resources[0]
+
     @retry_boto(error_code_regexp=r'.*\.NotFound')
-    def create_tags(self, resource_id, name=None, description=None):
+    def create_tags(self, resource_id, name=None, description=None,
+            source_ami=None):
         tags = dict(self.default_tags)
         if name:
             tags['Name'] = name
         if description:
             tags['Description'] = description
+        if source_ami:
+            tags['SourceAMI'] = source_ami
         log.debug('Tagging %s with %s', resource_id, tags)
         self.conn.create_tags([resource_id], tags)
 
@@ -270,10 +290,20 @@ class AWSService(BaseAWSService):
     def get_snapshot(self, snapshot_id):
         return self.conn.get_all_snapshots([snapshot_id])[0]
 
-    def create_snapshot(self, volume_id, name=None, description=None):
+    def get_snapshot_by_tags(self, tags):
+        matching_resources = self.conn.get_all_snapshots(
+            filters={('tag:%s' % key):value for key,value in tags.iteritems()},
+            owner=['self']
+        )
+        if matching_resources:
+            return matching_resources[0]
+
+    def create_snapshot(self, volume_id, name=None, description=None,
+            source_ami=None):
         log.debug('Creating snapshot of %s', volume_id)
         snapshot = self.conn.create_snapshot(volume_id, description)
-        self.create_tags(snapshot.id, name=name)
+        self.create_tags(snapshot.id, name=name, description=description,
+            source_ami=source_ami)
         return snapshot
 
     def delete_volume(self, volume_id):

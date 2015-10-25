@@ -127,7 +127,11 @@ class DummyAWSService(service.BaseAWSService):
                 self.transition_to_running[instance_id] = True
         return instance
 
-    def create_tags(self, resource_id, name=None, description=None):
+    def get_instance_by_tags(self, tags):
+        return None
+
+    def create_tags(self, resource_id, name=None, description=None,
+            source_ami=None):
         pass
 
     def stop_instance(self, instance_id):
@@ -168,10 +172,15 @@ class DummyAWSService(service.BaseAWSService):
                 self.transition_to_completed[snapshot_id] = True
         return snapshot
 
-    def create_snapshot(self, volume_id, name=None, description=None):
+    def get_snapshot_by_tags(self, tags):
+        return None
+
+    def create_snapshot(self, volume_id, name=None, description=None,
+            source_ami=None):
         snapshot = Snapshot()
         snapshot.id = _new_id()
         snapshot.status = 'pending'
+        snapshot.volume_size = 100
         self.snapshots[snapshot.id] = snapshot
         return snapshot
 

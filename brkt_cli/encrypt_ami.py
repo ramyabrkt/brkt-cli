@@ -403,7 +403,8 @@ def _run_encryptor_instance(aws_svc, encryptor_image_id, snapshot, root_size,
     aws_svc.create_tags(
         instance.id,
         name=NAME_ENCRYPTOR,
-        description=DESCRIPTION_ENCRYPTOR % {'image_id': guest_image_id}
+        description=DESCRIPTION_ENCRYPTOR % {'image_id': guest_image_id},
+        source_ami=guest_image_id
     )
     instance = _wait_for_instance(aws_svc, instance.id)
     log.info('Launched encryptor instance %s', instance.id)
@@ -430,7 +431,8 @@ def _run_snapshotter_instance(aws_svc, image_id):
     aws_svc.create_tags(
         instance.id,
         name=NAME_SNAPSHOT_CREATOR,
-        description=DESCRIPTION_SNAPSHOT_CREATOR % {'image_id': image_id}
+        description=DESCRIPTION_SNAPSHOT_CREATOR % {'image_id': image_id},
+        source_ami=image_id
     )
     return _wait_for_instance(aws_svc, instance.id)
 
@@ -456,13 +458,14 @@ def _snapshot_root_volume(aws_svc, instance, image_id):
     vol = aws_svc.get_volume(root_vol.volume_id)
     aws_svc.create_tags(
         root_vol.volume_id,
-        name=NAME_ORIGINAL_VOLUME % {'image_id': image_id}
+        name=NAME_ORIGINAL_VOLUME % {'image_id': image_id},
     )
 
     snapshot = aws_svc.create_snapshot(
         vol.id,
         name=NAME_ORIGINAL_SNAPSHOT,
-        description=DESCRIPTION_ORIGINAL_SNAPSHOT % {'image_id': image_id}
+        description=DESCRIPTION_ORIGINAL_SNAPSHOT % {'image_id': image_id},
+        source_ami=image_id
     )
     log.info(
         'Creating snapshot %s of root volume for instance %s',
@@ -470,10 +473,11 @@ def _snapshot_root_volume(aws_svc, instance, image_id):
     )
     _wait_for_snapshots(aws_svc, snapshot.id)
 
-    ret_values = (
-        snapshot.id, root_dev, vol.size, root_vol.volume_type, root_vol.iops)
-    log.debug('Returning %s', str(ret_values))
-    return ret_values
+    #ret_values = (
+    #    snapshot.id, root_dev, vol.size, root_vol.volume_type, root_vol.iops)
+    #log.debug('Returning %s', str(ret_values))
+    #return ret_values
+    return snapshot
 
 
 def _write_console_output(aws_svc, instance_id):
@@ -505,111 +509,160 @@ def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami,
             encrypted_ami_name=None):
     encryptor_instance = None
     ami = None
-    snapshot_id = None
+    original_snapshot = None
     sg_id = None
     snapshotter_instance = None
     terminated_instance_ids = set()
 
     try:
-        snapshotter_instance = _run_snapshotter_instance(aws_svc, image_id)
-        snapshot_id, root_dev, size, vol_type, iops = _snapshot_root_volume(
-            aws_svc, snapshotter_instance, image_id
-        )
-        _terminate_instance(
-            aws_svc,
-            id=snapshotter_instance.id,
-            name='snapshotter',
-            terminated_instance_ids=terminated_instance_ids
-        )
-        snapshotter_instance = None
-
-        sg_id = create_encryptor_security_group(aws_svc)
-
-        encryptor_instance = _run_encryptor_instance(
-            aws_svc, encryptor_ami, snapshot_id, size, image_id, sg_id
-        )
-
-        host_ip = encryptor_instance.ip_address
-        enc_svc = enc_svc_cls(host_ip)
-        log.info('Waiting for encryption service on %s at %s',
-                 encryptor_instance.id, host_ip)
-        _wait_for_encryptor_up(enc_svc, Deadline(600))
-        log.info('Creating encrypted root drive.')
-        try:
-            _wait_for_encryption(enc_svc)
-        except EncryptionError as e:
-            log.error(
-                'Encryption failed.  Check console output of instance %s '
-                'for details.',
-                encryptor_instance.id
-            )
-
-            e.console_output_file = _write_console_output(
-                aws_svc, encryptor_instance.id)
-            if e.console_output_file:
-                log.error(
-                    'Wrote console output for instance %s to %s',
-                    encryptor_instance.id,
-                    e.console_output_file.name
-                )
+        snap_guest = aws_svc.get_snapshot_by_tags({
+            'Name':NAME_ENCRYPTED_ROOT_SNAPSHOT,
+            'SourceAMI':image_id})
+        snap_bsd = aws_svc.get_snapshot_by_tags({
+            'Name':NAME_METAVISOR_ROOT_SNAPSHOT,
+            'SourceAMI':image_id})
+        snap_grub = aws_svc.get_snapshot_by_tags({
+            'Name':NAME_METAVISOR_GRUB_SNAPSHOT,
+            'SourceAMI':image_id})
+        snap_log = aws_svc.get_snapshot_by_tags({
+            'Name':NAME_METAVISOR_LOG_SNAPSHOT,
+            'SourceAMI':image_id})
+        # If we don't already have snapshots of the encrypted instance, get them.
+        encryptor_snapshots_exist = snap_guest and snap_bsd and snap_grub and snap_log
+        if encryptor_snapshots_exist:
+            print('found existing encryptor snapshots')
+        else:
+            encryptor_instance = aws_svc.get_instance_by_tags({
+                'Name':NAME_ENCRYPTOR,
+                'SourceAMI':image_id})
+            # If we don't already have a running encryptor instance, get one.
+            encryptor_running = encryptor_instance and encryptor_instance.state in ('pending', 'running', 'stopping')
+            if encryptor_running:
+                print('found running encryptor')
             else:
+                original_snapshot = aws_svc.get_snapshot_by_tags({
+                    'Name':NAME_ORIGINAL_SNAPSHOT,
+                    'SourceAMI':image_id})
+                # If we don't already have a snapshot of the original instance, get one.
+                if original_snapshot:
+                    print('found original snapshot')
+                else:
+                    snapshotter_instance = aws_svc.get_instance_by_tags({
+                        'Name':NAME_SNAPSHOT_CREATOR,
+                        'SourceAMI':image_id})
+                    # If we don't already have a running original instance, get one.
+                    snapshotter_running = snapshotter_instance and snapshotter_instance.state in ('pending', 'running', 'stopping')
+                    if snapshotter_running:
+                        print('found running snapshotter')
+                    else:
+                        snapshotter_instance = _run_snapshotter_instance(aws_svc, image_id)
+                    # TODO(gary): we don't use root_dev, do we really need vol_type
+                    # and iops? Why not just always create a standard volume of the
+                    # same size as the snapshot? (standard ebs has 3 iops per GB)
+                    original_snapshot = _snapshot_root_volume(
+                        aws_svc, snapshotter_instance, image_id
+                    )
+                    _terminate_instance(
+                        aws_svc,
+                        id=snapshotter_instance.id,
+                        name='snapshotter',
+                        terminated_instance_ids=terminated_instance_ids
+                    )
+                    snapshotter_instance = None
+
+                sg_id = create_encryptor_security_group(aws_svc)
+
+                encryptor_instance = _run_encryptor_instance(
+                    aws_svc, encryptor_ami, original_snapshot.id,
+                    original_snapshot.volume_size, image_id, sg_id
+                )
+
+            host_ip = encryptor_instance.ip_address
+            enc_svc = enc_svc_cls(host_ip)
+            log.info('Waiting for encryption service on %s at %s',
+                     encryptor_instance.id, host_ip)
+            _wait_for_encryptor_up(enc_svc, Deadline(600))
+            log.info('Creating encrypted root drive.')
+            try:
+                _wait_for_encryption(enc_svc)
+            except EncryptionError as e:
                 log.error(
-                    'Encryptor console output is not currently available.  '
-                    'Wait a minute and check the console output for '
-                    'instance %s in the EC2 Management '
-                    'Console.',
+                    'Encryption failed.  Check console output of instance %s '
+                    'for details.',
                     encryptor_instance.id
                 )
-            raise e
 
-        log.info('Encrypted root drive is ready.')
+                e.console_output_file = _write_console_output(
+                    aws_svc, encryptor_instance.id)
+                if e.console_output_file:
+                    log.error(
+                        'Wrote console output for instance %s to %s',
+                        encryptor_instance.id,
+                        e.console_output_file.name
+                    )
+                else:
+                    log.error(
+                        'Encryptor console output is not currently available.  '
+                        'Wait a minute and check the console output for '
+                        'instance %s in the EC2 Management '
+                        'Console.',
+                        encryptor_instance.id
+                    )
+                raise e
 
-        bdm = encryptor_instance.block_device_mapping
+            log.info('Encrypted root drive is ready.')
 
-        # Stop the encryptor instance.  Wait for it to stop before
-        # taking snapshots.
-        log.info('Stopping encryptor instance %s', encryptor_instance.id)
-        aws_svc.stop_instance(encryptor_instance.id)
-        _wait_for_instance(aws_svc, encryptor_instance.id, state='stopped')
+            bdm = encryptor_instance.block_device_mapping
 
-        description = DESCRIPTION_SNAPSHOT % {'image_id': image_id}
+            # Stop the encryptor instance.  Wait for it to stop before
+            # taking snapshots.
+            log.info('Stopping encryptor instance %s', encryptor_instance.id)
+            aws_svc.stop_instance(encryptor_instance.id)
+            _wait_for_instance(aws_svc, encryptor_instance.id, state='stopped')
 
-        # Snapshot volumes.
-        snap_guest = aws_svc.create_snapshot(
-            bdm['/dev/sda5'].volume_id,
-            name=NAME_ENCRYPTED_ROOT_SNAPSHOT,
-            description=description
-        )
-        snap_bsd = aws_svc.create_snapshot(
-            bdm['/dev/sda2'].volume_id,
-            name=NAME_METAVISOR_ROOT_SNAPSHOT,
-            description=description
-        )
-        snap_grub = aws_svc.create_snapshot(
-            bdm['/dev/sda1'].volume_id,
-            name=NAME_METAVISOR_GRUB_SNAPSHOT,
-            description=description
-        )
-        snap_log = aws_svc.create_snapshot(
-            bdm['/dev/sda3'].volume_id,
-            name=NAME_METAVISOR_LOG_SNAPSHOT,
-            description=description
-        )
+            description = DESCRIPTION_SNAPSHOT % {'image_id': image_id}
 
-        log.info(
-            'Creating snapshots for the new encrypted AMI: %s, %s, %s, %s',
-            snap_guest.id, snap_bsd.id, snap_grub.id, snap_log.id)
+            # Snapshot volumes.
+            snap_guest = aws_svc.create_snapshot(
+                bdm['/dev/sda5'].volume_id,
+                name=NAME_ENCRYPTED_ROOT_SNAPSHOT,
+                description=description,
+                source_ami=image_id
+            )
+            snap_bsd = aws_svc.create_snapshot(
+                bdm['/dev/sda2'].volume_id,
+                name=NAME_METAVISOR_ROOT_SNAPSHOT,
+                description=description,
+                source_ami=image_id
+            )
+            snap_grub = aws_svc.create_snapshot(
+                bdm['/dev/sda1'].volume_id,
+                name=NAME_METAVISOR_GRUB_SNAPSHOT,
+                description=description,
+                source_ami=image_id
+            )
+            snap_log = aws_svc.create_snapshot(
+                bdm['/dev/sda3'].volume_id,
+                name=NAME_METAVISOR_LOG_SNAPSHOT,
+                description=description,
+                source_ami=image_id
+            )
+
+            log.info(
+                'Creating snapshots for the new encrypted AMI: %s, %s, %s, %s',
+                snap_guest.id, snap_bsd.id, snap_grub.id, snap_log.id)
 
         _wait_for_snapshots(
             aws_svc, snap_guest.id, snap_bsd.id, snap_grub.id, snap_log.id)
 
-        _terminate_instance(
-            aws_svc,
-            id=encryptor_instance.id,
-            name='encryptor',
-            terminated_instance_ids=terminated_instance_ids
-        )
-        encryptor_instance = None
+        if encryptor_instance:
+            _terminate_instance(
+                aws_svc,
+                id=encryptor_instance.id,
+                name='encryptor',
+                terminated_instance_ids=terminated_instance_ids
+            )
+            encryptor_instance = None
 
         # Set up new Block Device Mappings
         log.debug('Creating block device mapping')
@@ -623,11 +676,9 @@ def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami,
         dev_log = EBSBlockDeviceType(volume_type='gp2',
                                      snapshot_id=snap_log.id,
                                      delete_on_termination=True)
-        if vol_type == '':
-            vol_type = 'standard'
+        vol_type = 'standard'
         dev_guest_root = EBSBlockDeviceType(volume_type=vol_type,
                                             snapshot_id=snap_guest.id,
-                                            iops=iops,
                                             delete_on_termination=True)
         new_bdm['/dev/sda1'] = dev_grub
         new_bdm['/dev/sda2'] = dev_root
@@ -751,13 +802,14 @@ def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami,
             except Exception as e:
                 log.warn('Failed deleting security group %s: %s', sg_id, e)
 
-        if snapshot_id:
+        if original_snapshot:
             try:
                 log.info('Deleting snapshot copy of original root volume %s',
-                         snapshot_id)
-                aws_svc.delete_snapshot(snapshot_id)
+                         original_snapshot.id)
+                aws_svc.delete_snapshot(original_snapshot.id)
             except Exception as e:
-                log.warn('Could not delete snapshot %s: %s', snapshot_id, e)
+                log.warn('Could not delete snapshot %s: %s',
+                        original_snapshot.id, e)
 
     log.info('Done.')
     return ami
