@@ -35,6 +35,8 @@ setup(
     entry_points={
         'console_scripts': [
             'brkt = brkt_cli:main',
+            'brkt_encrypt_server = brkt_cli.encrypt_ami_server:main',
+            'brkt_encrypt_client = brkt_cli.encrypt_ami_client:main',
         ]
     },
     package_dir={'brkt_cli': 'brkt_cli'},
