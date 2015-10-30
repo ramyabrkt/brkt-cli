@@ -1,59 +1,38 @@
 import argparse
-import collections
 import os
 
+import boto.exception
 import boto.iam
 
-Role = collections.namedtuple(
-    'Policy', ['name', 'policy_doc', 'assume_role_doc'])
-
-ROLES = {
-    'encryptor': Role(
-        'Encryptor',
-        'iam_encryptor_policy.json',
-        'assume_role_policy.json')
-}
-
-BRKT_ACCOUNT_IDS = {
-    'jenkins+dev': '423624396392'
-}
+from brkt_cli import setup_iam_args
 
 
-def setup_iam_args(parser):
-    parser.add_argument(
-        '--brkt-assume-role',
-        choices=BRKT_ACCOUNT_IDS.keys(),
-        help='Allow Bracket to assume this role (required for '
-             'off-line image encryption)')
-    parser.add_argument(
-        '--region',
-        metavar='NAME',
-        help='AWS region (e.g. us-west-2)',
-        dest='region',
-        required=True
-    )
-    parser.add_argument(
-        'role',
-        metavar='ROLE',
-        choices=ROLES.keys())
-
-
-def setup_iam(args):
-    role = ROLES[args.role]
+def setup_iam(values):
+    role = setup_iam_args.ROLES[values.role]
     policy_path = os.path.join(
         os.path.dirname(__file__), 'assets', role.policy_doc)
     assume_role_path = os.path.join(
         os.path.dirname(__file__), 'assets', role.assume_role_doc)
     policy_doc = open(policy_path).read()
     assume_role_doc = open(assume_role_path).read()
-    assume_role_doc %= {'account_id': BRKT_ACCOUNT_IDS[args.brkt_assume_role]}
-    conn = boto.iam.connect_to_region(args.region)
-    conn.create_role(role.name, assume_role_doc)
-    conn.put_role_policy(role.name, role.name, policy_doc)
+    assume_role_doc %= {'account_id': values.brkt_account_id}
+    conn = boto.iam.connect_to_region(values.region)
+    try:
+        resp = conn.get_role(values.role)
+        role_result = resp['get_role_response']['get_role_result']['role']
+    except boto.exception.BotoServerError as e:
+        if e.code == 'NoSuchEntity':
+            resp = conn.create_role(values.role, assume_role_doc)
+            role_result = \
+                resp['create_role_response']['create_role_result']['role']
+        else:
+            raise
+    conn.put_role_policy(values.role, values.role, policy_doc)
+    print 'policy arn: %s' % role_result['arn']
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    setup_iam_args(parser)
-    args = parser.parse_args()
-    setup_iam(args)
+    setup_iam_args.setup_iam_args(parser)
+    values = parser.parse_args()
+    setup_iam(values)

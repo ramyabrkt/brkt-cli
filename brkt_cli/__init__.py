@@ -25,6 +25,8 @@ from boto.exception import EC2ResponseError, NoAuthHandlerFound
 
 from brkt_cli import encrypt_ami
 from brkt_cli import encrypt_ami_args
+from brkt_cli import setup_iam
+from brkt_cli import setup_iam_args
 from brkt_cli import service
 from brkt_cli import util
 
@@ -33,44 +35,8 @@ VERSION = '0.9.3'
 log = None
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-v',
-        '--verbose',
-        dest='verbose',
-        action='store_true',
-        help='Print status information to the console'
-    )
-    parser.add_argument(
-        '--version',
-        action='version',
-        version='brkt-cli version %s' % VERSION
-    )
-
-    subparsers = parser.add_subparsers()
-
-    encrypt_ami_parser = subparsers.add_parser('encrypt-ami')
-    encrypt_ami_args.setup_encrypt_ami_args(encrypt_ami_parser)
-
-    argv = sys.argv[1:]
-    values = parser.parse_args(argv)
+def setup_encrypt(values):
     region = values.region
-
-    # Initialize logging.  Log messages are written to stderr and are
-    # prefixed with a compact timestamp, so that the user knows how long
-    # each operation took.
-    if values.verbose:
-        log_level = logging.DEBUG
-    else:
-        # Boto logs auth errors and 401s at ERROR level by default.
-        boto.log.setLevel(logging.FATAL)
-        log_level = logging.INFO
-    logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%H:%M:%S')
-    global log
-    log = logging.getLogger(__name__)
-    log.setLevel(log_level)
-    service.log.setLevel(log_level)
 
     if values.encrypted_ami_name:
         try:
@@ -179,6 +145,54 @@ def main():
         else:
             log.error('Interrupted by user')
     return 1
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-v',
+        '--verbose',
+        dest='verbose',
+        action='store_true',
+        help='Print status information to the console'
+    )
+    parser.add_argument(
+        '--version',
+        action='version',
+        version='brkt-cli version %s' % VERSION
+    )
+
+    subparsers = parser.add_subparsers()
+
+    encrypt_ami_parser = subparsers.add_parser('encrypt-ami')
+    encrypt_ami_args.setup_encrypt_ami_args(encrypt_ami_parser)
+    encrypt_ami_parser.set_defaults(func=setup_encrypt)
+
+    setup_iam_parser = subparsers.add_parser('setup_iam')
+    setup_iam_args.setup_iam_args(setup_iam_parser)
+    setup_iam_parser.set_defaults(func=setup_iam.setup_iam)
+
+    argv = sys.argv[1:]
+    values = parser.parse_args(argv)
+
+    # Initialize logging.  Log messages are written to stderr and are
+    # prefixed with a compact timestamp, so that the user knows how long
+    # each operation took.
+    if values.verbose:
+        log_level = logging.DEBUG
+    else:
+        # Boto logs auth errors and 401s at ERROR level by default.
+        boto.log.setLevel(logging.FATAL)
+        log_level = logging.INFO
+    logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%H:%M:%S')
+    global log
+    log = logging.getLogger(__name__)
+    log.setLevel(log_level)
+    service.log.setLevel(log_level)
+
+    # call the sub-command
+    values.func(values)
+
 
 if __name__ == '__main__':
     exit_status = main()

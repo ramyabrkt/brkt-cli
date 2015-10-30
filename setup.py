@@ -40,6 +40,10 @@ setup(
         ]
     },
     package_dir={'brkt_cli': 'brkt_cli'},
-    package_data={'brkt_cli': ['assets/ca_cert.pem']},
+    package_data={
+        'brkt_cli': [
+            'assets/ca_cert.pem',
+            'assets/assume_role_policy.json',
+            'assets/iam_encryptor_policy.json']},
     test_suite='test'
 )
