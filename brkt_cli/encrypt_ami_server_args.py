@@ -57,3 +57,23 @@ def setup_encrypt_ami_server_args(parser):
         help='Max number of parallel encryption jobs',
         default=4
     )
+    parser.add_argument(
+        '-p',
+        '--port',
+        metavar='HTTP_PORT',
+        type=int,
+        help='HTTP listening port',
+        default=8000
+    )
+    parser.add_argument(
+        '-c',
+        '--cert',
+        metavar='SERVER_CERT',
+        help='Server cert file'
+    )
+    parser.add_argument(
+        '-k',
+        '--key',
+        metavar='SERVER_KEY',
+        help='Server key file'
+    )

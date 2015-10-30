@@ -30,7 +30,7 @@ setup(
     url='http://brkt.com',
     license='Apache 2.0',
     packages=['brkt_cli'],
-    install_requires=['boto>=2.38.0', 'requests>=2.7.0'],
+    install_requires=['boto>=2.38.0', 'requests>=2.7.0', 'flask>=0.1.0'],
     zip_safe=False,
     entry_points={
         'console_scripts': [

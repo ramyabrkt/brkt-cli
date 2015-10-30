@@ -48,6 +48,7 @@ from brkt_cli import service
 from brkt_cli import util
 from brkt_cli import encrypt_ami
 from brkt_cli import encrypt_ami_server_args
+from brkt_cli.encrypt_ami_server_http import make_http_server
 
 
 BLOCK_TIMEOUT = 10
@@ -231,6 +232,7 @@ def create_session(db_conn, table_name, job):
             table_name,
             connection=db_conn)
     data = {
+        'customer_id': job['customer_id'],
         'encrypt_id': job['encrypt_id'],
         'region': job['region'],
         'role': job['role'],
@@ -285,6 +287,12 @@ def main():
         queue = sqs.create_queue(values.queue_name)
     queue.set_message_class(boto.sqs.jsonmessage.JSONMessage)
     queue.set_attribute('VisibilityTimeout', VISIBILITY_TIMEOUT)
+
+    # Run the http server as a thread, could/should be separate process
+    http = make_http_server(values)
+    http_thread = threading.Thread(target=http.serve_forever)
+    http_thread.daemon = True
+    http_thread.start()
 
     def encrypt_worker(session, message):
         try:

@@ -15,31 +15,21 @@
 # limitations under the License.
 
 import argparse
-import json
 import logging
 import sys
-import time
 import uuid
 
-import boto.dynamodb2
-import boto.dynamodb2.exceptions
-import boto.sqs
-import boto.sqs.jsonmessage
-from boto.dynamodb2.table import Table
+import requests
 
 from brkt_cli import encrypt_ami_args
 from brkt_cli import encrypt_ami_client_args
 
+# Hard-coded "dummy" customer ID used when client and server
+# are local.  Brkt auth credentials would replace this.
+LOCAL_CUST_ID = 'a0c5eec4-72fc-494f-a3e2-6aaa32bf70a4'
+
 
 def encrypt(values):
-    sqs = boto.sqs.connect_to_region(values.region)
-
-    queue = sqs.lookup(values.queue_name)
-    if not queue:
-        queue = sqs.create_queue(values.queue_name)
-    queue.set_message_class(boto.sqs.jsonmessage.JSONMessage)
-    queue.set_attribute('VisibilityTimeout', 14400)
-
     job = {
         'encrypt_id': uuid.uuid4().hex,
         'region': values.region,
@@ -48,34 +38,27 @@ def encrypt(values):
         'encrypted_ami_name': values.encrypted_ami_name,
         'role': None
     }
-    queue.write(boto.sqs.jsonmessage.JSONMessage(body=job))
-    print json.dumps(job, indent=4)
+    resp = requests.post(
+        '%s/encrypt/%s' % (values.server_url, LOCAL_CUST_ID),
+        json=job,
+        verify=False)
+    print resp.content
 
 
 def poll(values):
-    db_conn = boto.dynamodb2.connect_to_region(values.region)
+    resp = requests.get(
+        '%s/encrypt/%s/%s' % (
+            values.server_url, LOCAL_CUST_ID, values.encrypt_id),
+        verify=False)
+    print resp.content
 
-    job = Table(values.table_name, connection=db_conn)
 
-    try:
-        job = job.get_item(encrypt_id=values.encrypt_id)
-    except boto.dynamodb2.exceptions.ItemNotFound:
-        print('job not found (not ready yet), try again later')
-        sys.exit(1)
-    print json.dumps({
-            'encrypt_id': job['encrypt_id'],
-            'region': job['region'],
-            'ami': job['ami'],
-            'encryptor_ami': job['encryptor_ami'],
-            'encrypted_ami_name': job['encrypted_ami_name'],
-            'role': job['role'],
-            'status': job['status'],
-            'start_time': time.ctime(job['start_time']),
-            'complete_time': (
-                time.ctime(job['complete_time'])
-                if job['complete_time'] else None),
-            'log': job['log']
-        }, indent=4)
+def jobs(values):
+    resp = requests.get(
+        '%s/encrypt/%s' % (
+            values.server_url, LOCAL_CUST_ID),
+        verify=False)
+    print resp.content
 
 
 def main():
@@ -91,6 +74,9 @@ def main():
     poll_parser = subparsers.add_parser('poll')
     encrypt_ami_client_args.setup_poll_args(poll_parser)
     poll_parser.set_defaults(func=poll)
+
+    jobs_parser = subparsers.add_parser('jobs')
+    jobs_parser.set_defaults(func=jobs)
 
     argv = sys.argv[1:]
     values = parser.parse_args(argv)
