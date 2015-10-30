@@ -32,14 +32,13 @@ stage.
 import argparse
 import logging
 import os
+import Queue
 import sys
 import time
 import threading
 
 import boto
 import boto.dynamodb2
-import boto.sqs
-import boto.sqs.jsonmessage
 from boto.dynamodb2.fields import HashKey
 from boto.dynamodb2.table import Table
 from boto.exception import EC2ResponseError, NoAuthHandlerFound
@@ -270,27 +269,25 @@ def main():
     values = parser.parse_args(argv)
     region = values.region
 
-    logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%H:%M:%S')
-    log = logging.getLogger('encrypt_ami')
+    logging.basicConfig(
+        format='%(asctime)s %(threadName)s %(message)s', datefmt='%H:%M:%S')
+    log = logging.getLogger('brkt_cli')
 
     if values.verbose:
         log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.INFO)
 
-    sqs = boto.sqs.connect_to_region(region)
     db = boto.dynamodb2.connect_to_region(region)
     semaphore = threading.Semaphore(values.jobs)
-
-    queue = sqs.lookup(values.queue_name)
-    if not queue:
-        queue = sqs.create_queue(values.queue_name)
-    queue.set_message_class(boto.sqs.jsonmessage.JSONMessage)
-    queue.set_attribute('VisibilityTimeout', VISIBILITY_TIMEOUT)
+    # This is a dumb queue.  Restarting the server will drop all in-flight
+    # jobs.  This can be addressed later.
+    queue = Queue.Queue()
 
     # Run the http server as a thread, could/should be separate process
-    http = make_http_server(values)
-    http_thread = threading.Thread(target=http.serve_forever)
+    log.info('string http server port %s', values.port)
+    http = make_http_server(values, queue)
+    http_thread = threading.Thread(target=http.serve_forever, name='http')
     http_thread.daemon = True
     http_thread.start()
 
@@ -311,22 +308,18 @@ def main():
             semaphore.acquire()
             job = None
             try:
-                job = queue.read(wait_time_seconds=BLOCK_TIMEOUT)
-            except boto.exception.SQSError:
-                log.exception('Error reading from queue')
-            if not job:
+                job = queue.get(timeout=BLOCK_TIMEOUT)
+            except Queue.Empty:
                 semaphore.release()
                 log.debug('No encrypt job available')
                 continue
             session = create_session(db, values.table_name, job)
-            t = threading.Thread(target=encrypt_worker, args=[session, job])
+            t = threading.Thread(
+                target=encrypt_worker,
+                args=[session, job],
+                name=job['encrypt_id'])
             t.daemon = True
             t.start()
-            # At this point we hand off to encrypt which takes an indeterminate
-            # amount of time, therefore we delete the message from the queue.
-            # If there is a failure, we will not just automatically retry, the
-            # user needs to explicitly create a new encrypt job.
-            queue.delete_message(job)
     except KeyboardInterrupt:
         pass
 

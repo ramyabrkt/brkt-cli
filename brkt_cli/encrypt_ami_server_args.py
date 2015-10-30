@@ -34,14 +34,6 @@ def setup_encrypt_ami_server_args(parser):
         version='brkt-cli version %s' % VERSION
     )
     parser.add_argument(
-        '-q',
-        '--queue-name',
-        metavar='QUEUE_NAME',
-        dest='queue_name',
-        help='Specify the name of the SQS job queue',
-        default='brkt_encryptor_queue'
-    )
-    parser.add_argument(
         '-t',
         '--table',
         metavar='TABLE_NAME',

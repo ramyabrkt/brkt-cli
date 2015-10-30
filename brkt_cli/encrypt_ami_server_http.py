@@ -79,24 +79,16 @@ def jobs(cust_id):
 
 @app.route("/encrypt/<cust_id>", methods=['POST'])
 def encrypt(cust_id):
-    sqs = boto.sqs.connect_to_region(app.config['REGION'])
-
-    queue = sqs.lookup(app.config['QUEUE_NAME'])
-    if not queue:
-        queue = sqs.create_queue(app.config['QUEUE_NAME'])
-    queue.set_message_class(boto.sqs.jsonmessage.JSONMessage)
-    queue.set_attribute('VisibilityTimeout', 14400)
-
     job = json.loads(request.data)
     job['customer_id'] = cust_id
 
-    queue.write(boto.sqs.jsonmessage.JSONMessage(body=job))
+    app.config['QUEUE'].put(job)
     return json.dumps(job, indent=4)
 
 
-def make_http_server(values):
+def make_http_server(values, queue):
     app.config['REGION'] = values.region
-    app.config['QUEUE_NAME'] = values.queue_name
+    app.config['QUEUE'] = queue
     app.config['TABLE_NAME'] = values.table_name
     httpd = make_server('', values.port, app)
     if values.cert:
