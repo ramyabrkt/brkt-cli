@@ -186,11 +186,15 @@ class AWSService(BaseAWSService):
             self,
             encryptor_session_id,
             encryptor_ami,
-            default_tags=None):
+            default_tags=None,
+            subnet_id=None,
+            vpc_id=None):
         super(AWSService, self).__init__(encryptor_session_id)
 
         self.encryptor_ami = encryptor_ami
         self.default_tags = default_tags or {}
+        self.subnet_id = subnet_id
+        self.vpc_id = vpc_id
 
         # These will be initialized by connect().
         self.key_name = None
@@ -227,7 +231,8 @@ class AWSService(BaseAWSService):
                 key_name=self.key_name,
                 instance_type=instance_type,
                 block_device_map=block_device_map,
-                security_group_ids=security_group_ids
+                security_group_ids=security_group_ids,
+                subnet_id=self.subnet_id
             )
             return reservation.instances[0]
         except EC2ResponseError:
@@ -352,7 +357,7 @@ class AWSService(BaseAWSService):
         return self.conn.delete_snapshot(snapshot_id)
 
     def create_security_group(self, name, description):
-        sg = self.conn.create_security_group(name, description)
+        sg = self.conn.create_security_group(name, description, vpc_id=self.vpc_id)
         return sg.id
 
     @retry_boto(error_code_regexp=r'InvalidGroup\.NotFound')

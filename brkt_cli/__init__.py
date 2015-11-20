@@ -109,7 +109,7 @@ def main():
     try:
         # Connect to AWS.
         aws_svc = aws_service.AWSService(
-            session_id, encryptor_ami, default_tags=default_tags)
+            session_id, encryptor_ami, default_tags=default_tags, subnet_id=values.subnet_id, vpc_id=values.vpc_id)
         aws_svc.connect(region, key_name=values.key_name)
     except NoAuthHandlerFound:
         msg = (

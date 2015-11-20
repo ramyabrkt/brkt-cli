@@ -33,6 +33,20 @@ def setup_encrypt_ami_args(parser):
         dest='region',
         required=True
     )
+    parser.add_argument(
+        '--subnet-id',
+        metavar='NAME',
+        help='AWS subnet (e.g. )',
+        dest='subnet_id',
+        required=True
+    )
+    parser.add_argument(
+        '--vpc-id',
+        metavar='NAME',
+        help='AWS vpc (e.g. )',
+        dest='vpc_id',
+        required=True
+    )
 
     # Optional AMI ID that's used to launch the encryptor instance.  This
     # argument is hidden because it's only used for development.
