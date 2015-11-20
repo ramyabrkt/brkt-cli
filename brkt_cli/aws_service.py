@@ -225,14 +225,20 @@ class AWSService(BaseAWSService):
         if security_group_ids is None:
             security_group_ids = []
         log.debug('Starting a new instance based on %s', image_id)
+        interface = boto.ec2.networkinterface.NetworkInterfaceSpecification(
+            subnet_id=self.subnet_id,
+            groups=security_group_ids,
+            associate_public_ip_address=True)
+        interfaces = boto.ec2.networkinterface.NetworkInterfaceCollection(interface)
         try:
             reservation = self.conn.run_instances(
                 image_id=image_id,
                 key_name=self.key_name,
                 instance_type=instance_type,
                 block_device_map=block_device_map,
-                security_group_ids=security_group_ids,
-                subnet_id=self.subnet_id
+                network_interfaces=interfaces
+                #security_group_ids=security_group_ids,
+                #subnet_id=self.subnet_id
             )
             return reservation.instances[0]
         except EC2ResponseError:
