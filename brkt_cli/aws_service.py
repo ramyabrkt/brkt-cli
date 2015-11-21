@@ -229,7 +229,8 @@ class AWSService(BaseAWSService):
             subnet_id=self.subnet_id,
             groups=security_group_ids,
             associate_public_ip_address=True)
-        interfaces = boto.ec2.networkinterface.NetworkInterfaceCollection(interface)
+        interfaces = boto.ec2.networkinterface.NetworkInterfaceCollection(
+            interface)
         try:
             reservation = self.conn.run_instances(
                 image_id=image_id,
@@ -237,8 +238,6 @@ class AWSService(BaseAWSService):
                 instance_type=instance_type,
                 block_device_map=block_device_map,
                 network_interfaces=interfaces
-                #security_group_ids=security_group_ids,
-                #subnet_id=self.subnet_id
             )
             return reservation.instances[0]
         except EC2ResponseError:
