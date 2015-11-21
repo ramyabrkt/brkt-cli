@@ -496,7 +496,7 @@ def _terminate_instance(aws_svc, id, name, terminated_instance_ids):
 
 
 def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami,
-            encrypted_ami_name=None):
+            encrypted_ami_name=None, use_private_encryptor_ip=False):
     encryptor_instance = None
     ami = None
     snapshot_id = None
@@ -524,6 +524,8 @@ def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami,
         )
 
         host_ip = encryptor_instance.ip_address
+        if use_private_encryptor_ip:
+            host_ip = encryptor_instance.private_ip_address
         enc_svc = enc_svc_cls(host_ip)
         log.info('Waiting for encryption service on %s at %s',
                  encryptor_instance.id, host_ip)

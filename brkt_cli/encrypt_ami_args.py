@@ -47,6 +47,12 @@ def setup_encrypt_ami_args(parser):
         dest='vpc_id',
         required=True
     )
+    parser.add_argument(
+        '--use-private-encryptor-ip',
+        dest='use_private_encryptor_ip',
+        action='store_true',
+        help="Make requests to the encryptor instance's private IP address."
+    )
 
     # Optional AMI ID that's used to launch the encryptor instance.  This
     # argument is hidden because it's only used for development.

@@ -109,7 +109,8 @@ def main():
     try:
         # Connect to AWS.
         aws_svc = aws_service.AWSService(
-            session_id, encryptor_ami, default_tags=default_tags, subnet_id=values.subnet_id, vpc_id=values.vpc_id)
+            session_id, encryptor_ami, default_tags=default_tags,
+            subnet_id=values.subnet_id, vpc_id=values.vpc_id)
         aws_svc.connect(region, key_name=values.key_name)
     except NoAuthHandlerFound:
         msg = (
@@ -145,7 +146,8 @@ def main():
             enc_svc_cls=encryptor_service.EncryptorService,
             image_id=values.ami,
             encryptor_ami=encryptor_ami,
-            encrypted_ami_name=values.encrypted_ami_name
+            encrypted_ami_name=values.encrypted_ami_name,
+            use_private_encryptor_ip=values.use_private_encryptor_ip
         )
         # Print the AMI ID to stdout, in case the caller wants to process
         # the output.  Log messages go to stderr.
