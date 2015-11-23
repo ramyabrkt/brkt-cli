@@ -307,6 +307,9 @@ class DummyAWSService(aws_service.BaseAWSService):
     def add_security_group_rule(self, sg_id, **kwargs):
         pass
 
+    def add_security_group_rule_egress(self, sg_id, **kwargs):
+        pass
+
     def delete_security_group(self, sg_id):
         pass
 

@@ -439,10 +439,16 @@ def create_encryptor_security_group(aws_svc, vpc_id=None):
     sg = aws_svc.create_security_group(sg_name, sg_desc, vpc_id=vpc_id)
     log.info('Created temporary security group with id %s', sg.id)
     try:
+        # Allow any source to query the encryptor status server.
         aws_svc.add_security_group_rule(
             sg.id, ip_protocol='tcp',
             from_port=encryptor_service.ENCRYPTOR_STATUS_PORT,
             to_port=encryptor_service.ENCRYPTOR_STATUS_PORT,
+            cidr_ip='0.0.0.0/0')
+        # Allow the encryptor to query any dest. This is needed for
+        # communication with yeti & sometimes S3.
+        aws_svc.add_security_group_rule_egress(
+            sg.id, ip_protocol='-1',
             cidr_ip='0.0.0.0/0')
     except Exception as e:
         log.error('Failed adding security group rule to %s: %s', sg.id, e)

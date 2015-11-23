@@ -152,6 +152,10 @@ class BaseAWSService(object):
         pass
 
     @abc.abstractmethod
+    def add_security_group_rule_egress(self, sg_id, **kwargs):
+        pass
+
+    @abc.abstractmethod
     def delete_security_group(self, sg_id):
         pass
 
@@ -487,10 +491,27 @@ class AWSService(BaseAWSService):
             return _get_first_element(groups, 'InvalidGroup.NotFound')
 
     def add_security_group_rule(self, sg_id, **kwargs):
-        kwargs['group_id'] = sg_id
-        ok = self.conn.authorize_security_group(**kwargs)
-        if not ok:
-            raise Exception('Unknown error while adding security group rule')
+        try:
+            ok = self.conn.authorize_security_group(group_id=sg_id, **kwargs)
+            if not ok:
+                raise Exception(
+                    'Unknown error while adding security group rule')
+        except EC2ResponseError as e:
+            if e.error_code == 'InvalidPermission.Duplicate':
+                return
+            raise e
+
+    def add_security_group_rule_egress(self, sg_id, **kwargs):
+        try:
+            ok = self.conn.authorize_security_group_egress(
+                group_id=sg_id, **kwargs)
+            if not ok:
+                raise Exception(
+                    'Unknown error while adding security group rule')
+        except EC2ResponseError as e:
+            if e.error_code == 'InvalidPermission.Duplicate':
+                return
+            raise e
 
     @retry_boto(error_code_regexp=r'InvalidGroup\.InUse|DependencyViolation')
     def delete_security_group(self, sg_id):
