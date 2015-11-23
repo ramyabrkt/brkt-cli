@@ -358,6 +358,9 @@ def create_encryptor_security_group(svc):
             from_port=encryptor_service.ENCRYPTOR_STATUS_PORT,
             to_port=encryptor_service.ENCRYPTOR_STATUS_PORT,
             cidr_ip='0.0.0.0/0')
+        svc.add_security_group_rule_egress(
+            sg_id, ip_protocol='-1',
+            cidr_ip='0.0.0.0/0')
     except Exception as e:
         log.error('Failed adding security group rule to %s: %s', sg_id, e)
         try:
