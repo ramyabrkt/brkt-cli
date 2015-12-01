@@ -26,6 +26,8 @@ from boto.exception import EC2ResponseError, NoAuthHandlerFound
 from brkt_cli import aws_service
 from brkt_cli import encrypt_ami
 from brkt_cli import encrypt_ami_args
+from brkt_cli import update_encrypted_ami
+from brkt_cli import update_encrypted_ami_args
 from brkt_cli import encryptor_service
 from brkt_cli import util
 
@@ -34,39 +36,7 @@ VERSION = '0.9.6'
 log = None
 
 
-def main():
-    # Check Python version.
-    version = '%d.%d' % (sys.version_info.major, sys.version_info.minor)
-    if version != '2.7':
-        print(
-            'brkt-cli requires Python 2.7.  Version',
-            version,
-            'is not supported.',
-            file=sys.stderr
-        )
-        return 1
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-v',
-        '--verbose',
-        dest='verbose',
-        action='store_true',
-        help='Print status information to the console'
-    )
-    parser.add_argument(
-        '--version',
-        action='version',
-        version='brkt-cli version %s' % VERSION
-    )
-
-    subparsers = parser.add_subparsers()
-
-    encrypt_ami_parser = subparsers.add_parser('encrypt-ami')
-    encrypt_ami_args.setup_encrypt_ami_args(encrypt_ami_parser)
-
-    argv = sys.argv[1:]
-    values = parser.parse_args(argv)
+def command_encrypt_ami(values, log):
     region = values.region
 
     # Initialize logging.  Log messages are written to stderr and are
@@ -78,16 +48,6 @@ def main():
         # Boto logs auth errors and 401s at ERROR level by default.
         boto.log.setLevel(logging.FATAL)
         log_level = logging.INFO
-
-    # Set the log level of our modules explicitly.  We can't set the
-    # default log level to INFO because we would see INFO messages from
-    # boto and other 3rd party libraries in the command output.
-    logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%H:%M:%S')
-    global log
-    log = logging.getLogger(__name__)
-    log.setLevel(log_level)
-    aws_service.log.setLevel(log_level)
-    encryptor_service.log.setLevel(log_level)
 
     if values.encrypted_ami_name:
         try:
@@ -196,6 +156,147 @@ def main():
         else:
             log.error('Interrupted by user')
     return 1
+
+
+def command_update_encrypted_ami(values, log):
+    encrypted_ami_name = None
+    if values.encrypted_ami_name:
+        try:
+            aws_service.validate_image_name(values.encrypted_ami_name)
+            encrypted_ami_name = values.encrypted_ami_name
+        except aws_service.ImageNameError as e:
+            print(e.message, file=sys.stderr)
+            return 1
+    region = values.region
+    if util.validate_region(region) == 1:
+        print ('Invalid region %s' % region,
+               file=sys.stderr)
+        return 1
+    nonce = util.make_nonce()
+    default_tags = encrypt_ami.get_default_tags(nonce, '')
+    aws_svc = aws_service.AWSService(
+        nonce, None, default_tags=default_tags)
+    aws_svc.connect(region)
+    zones = [str(z.name) for z in aws_svc.conn.get_all_zones()]
+    # If supplied, use the zone in the args
+    if values.zone:
+        zone = values.zone
+        if zone not in zones:
+            print (
+                'Invalid zone %s for region %s. ' % (zone, region) +
+                'Must be one of %s' % str(zones),
+                file=sys.stderr
+            )
+            return 1
+    else:
+        zone = zones[0]
+        log.info('Using zone %s', zone)
+    encrypted_ami = values.ami
+    guest_ami_error = aws_svc.validate_guest_ami(encrypted_ami)
+    if guest_ami_error:
+        print(guest_ami_error, file=sys.stderr)
+        return 1
+    updater_ami = values.updater_ami
+    updater_ami_error = aws_svc.validate_encryptor_ami(values.updater_ami)
+    if updater_ami_error:
+        log.error('Update failed: %s', updater_ami_error)
+        return 1
+    # Initial validation done
+    log.info('Commencing update for AMI %s', encrypted_ami)
+    # snapshot the guest's volume
+    guest_snapshot, volume, vol_type, error = \
+        update_encrypted_ami.retrieve_guest_volume_snapshot(
+            aws_svc,
+            encrypted_ami,
+            zone)
+    if not guest_snapshot:
+        log.error('failed to launch instance %s: %s' % (encrypted_ami, error))
+        return 1
+    log.info('Launching metavisor update encryptor instance')
+    updater_ami_block_devices = \
+        update_encrypted_ami.snapshot_updater_ami_block_devices(
+            aws_svc,
+            encrypted_ami,
+            updater_ami,
+            guest_snapshot.id,
+            volume.size)
+    ami = encrypt_ami.register_new_ami(
+        aws_svc,
+        updater_ami_block_devices[encrypt_ami.NAME_METAVISOR_GRUB_SNAPSHOT],
+        updater_ami_block_devices[encrypt_ami.NAME_METAVISOR_ROOT_SNAPSHOT],
+        updater_ami_block_devices[encrypt_ami.NAME_METAVISOR_LOG_SNAPSHOT],
+        guest_snapshot,
+        vol_type,
+        volume.iops,
+        encrypted_ami,
+        encrypted_ami_name=encrypted_ami_name)
+    log.info('Done.')
+    print(ami)
+    return 0
+
+
+def main():
+    # Check Python version.
+    version = '%d.%d' % (sys.version_info.major, sys.version_info.minor)
+    if version != '2.7':
+        print(
+            'brkt-cli requires Python 2.7.  Version',
+            version,
+            'is not supported.',
+            file=sys.stderr
+        )
+        return 1
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-v',
+        '--verbose',
+        dest='verbose',
+        action='store_true',
+        help='Print status information to the console'
+    )
+    parser.add_argument(
+        '--version',
+        action='version',
+        version='brkt-cli version %s' % VERSION
+    )
+
+    subparsers = parser.add_subparsers()
+
+    encrypt_ami_parser = subparsers.add_parser('encrypt-ami')
+    encrypt_ami_args.setup_encrypt_ami_args(encrypt_ami_parser)
+
+    update_encrypted_ami_parser = \
+        subparsers.add_parser('update-encrypted-ami')
+    update_encrypted_ami_args.setup_update_encrypted_ami(
+        update_encrypted_ami_parser)
+
+    argv = sys.argv[1:]
+    values = parser.parse_args(argv)
+    # Initialize logging.  Log messages are written to stderr and are
+    # prefixed with a compact timestamp, so that the user knows how long
+    # each operation took.
+    if values.verbose:
+        log_level = logging.DEBUG
+    else:
+        # Boto logs auth errors and 401s at ERROR level by default.
+        boto.log.setLevel(logging.FATAL)
+        log_level = logging.INFO
+    # Set the log level of our modules explicitly.  We can't set the
+    # default log level to INFO because we would see INFO messages from
+    # boto and other 3rd party libraries in the command output.
+    logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%H:%M:%S')
+    global log
+    log = logging.getLogger(__name__)
+    log.setLevel(log_level)
+    aws_service.log.setLevel(log_level)
+    encryptor_service.log.setLevel(log_level)
+    if argv[0] == 'encrypt-ami':
+        return command_encrypt_ami(values, log)
+
+    if argv[0] == 'update-encrypted-ami':
+        return command_update_encrypted_ami(values, log)
+
 
 if __name__ == '__main__':
     exit_status = main()
