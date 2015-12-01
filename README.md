@@ -1,6 +1,7 @@
 **brkt-cli** is a command-line interface to the [Bracket Computing](http://www.brkt.com)
 service.  It produces an encrypted version of an Amazon Machine Image, which can then be
-launched in EC2.
+launched in EC2. It can also update an already encrypted version of an Amazon Machine Image,
+which can then be launched in EC2.
 
 ## Requirements
 
@@ -47,6 +48,23 @@ optional arguments:
   --no-validate-ami     Don't validate AMI properties
   --region NAME         AWS region (e.g. us-west-2)
 ```
+```
+$ python brkt update-encrypted-ami --help
+usage: brkt update-encrypted-ami [-h] --updater-ami UPDATER_AMI_ID --region
+                                 REGION [--encrypted-ami-name NAME]
+                                 AMI_ID
+
+positional arguments:
+  AMI_ID                The AMI that will be encrypted
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --updater-ami UPDATER_AMI_ID
+                        The metavisor updater AMI that will be used
+  --region REGION       AWS region (e.g. us-west-2)
+  --encrypted-ami-name NAME
+                        Specify the name of the generated encrypted AMI
+```
 
 ## Configuration
 
@@ -78,6 +96,30 @@ $ brkt encrypt-ami --key my-aws-key --region us-east-1 ami-76e27e1e
 15:57:12 Deleting snapshot copy of original root volume snap-847da3e1
 15:57:12 Done.
 ami-07c2a262
+```
+
+When the process completes, the new AMI id is written to stdout.  All log
+messages are written to stderr.
+
+## Updating an encrypted AMI
+
+Run **brkt update-encrypted-ami** to update anw encrypted AMI based on an existing
+encrypted image:
+
+```
+$ brkt update-encrypted-ami --region us-east-1 --updater-ami ami-32430158 ami-72094e18
+11:09:46 Commencing update for AMI ami-72094e18
+11:09:46 Creating guest volume snapshot
+11:10:18 Launching metavisor updater instance
+...
+11:11:53 metavisor updater snapshots ready
+...
+11:11:53 Terminating encryptor instance i-9ecfe120
+...
+11:11:55 Registered AMI ami-b9d795d3 based on the snapshots.
+11:12:00 Created encrypted AMI ami-b9d795d3 based on ami-72094e18
+Done.
+ami-b9d795d3
 ```
 
 When the process completes, the new AMI id is written to stdout.  All log
