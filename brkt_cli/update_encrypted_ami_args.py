@@ -29,6 +29,12 @@ def setup_update_encrypted_ami(parser):
         help='Specify the name of the generated encrypted AMI',
         required=False
     )
+    parser.add_argument(
+        '--no-validate-ami',
+        dest='no_validate_ami',
+        action='store_true',
+        help="Don't validate encrypted AMI properties"
+    )
     # Optional EC2 SSH key pair name to use for launching the snapshotter
     # and encryptor instances.  This argument is hidden because it's only
     # used for development.

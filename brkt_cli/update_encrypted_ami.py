@@ -106,30 +106,16 @@ def retrieve_guest_volume_snapshot(aws_service,
                                    zone):
     # Verify expected device mapping is present, return with info
     log.info('Creating guest volume snapshot')
-    encrypted_image = aws_service.conn.get_image(encrypted_ami_id)
+    encrypted_image = aws_service.get_image(encrypted_ami_id)
     guest_volume_mapping = \
         encrypted_image.block_device_mapping.get('/dev/sda5')
     if not guest_volume_mapping:
-        return None, None, None, \
+        return None, None,\
             'Invalid block device mapping: /dev/sda5 not present'
-    snapshot = aws_service.conn.get_all_snapshots(
-        guest_volume_mapping.snapshot_id)[0]
-    # Create new volume off this snapshot, snapshot the volume and
-    # return the snapshot
-    guest_volume = snapshot.create_volume(zone)
-    # Wait for volume to be ready
-    volume_available = False
-    while not volume_available:
-        encrypt_ami.sleep(5)
-        guest_volume = aws_service.conn.get_all_volumes(guest_volume.id)[0]
-        if guest_volume.status == 'error':
-            return None, None, None, \
-                'Error creating volume %s' % guest_volume.id
-        if guest_volume.status == 'available':
-            volume_available = True
-    guest_volume_snapshot = guest_volume.create_snapshot()
-    encrypt_ami.wait_for_snapshots(aws_service, guest_volume_snapshot.id)
-    # Delete volume
-    aws_service.delete_volume(guest_volume.id)
-    return guest_volume_snapshot, guest_volume, \
-        guest_volume_mapping.volume_type, None
+    # Need to recover the volume iops and size
+    volume_info = {'iops': guest_volume_mapping.iops,
+                   'size': guest_volume_mapping.size,
+                   'type': guest_volume_mapping.volume_type}
+    guest_volume_snapshot = aws_service.get_snapshot(
+        guest_volume_mapping.snapshot_id)
+    return guest_volume_snapshot, volume_info, None

@@ -52,6 +52,7 @@ optional arguments:
 $ python brkt update-encrypted-ami --help
 usage: brkt update-encrypted-ami [-h] --updater-ami UPDATER_AMI_ID --region
                                  REGION [--encrypted-ami-name NAME]
+                                 [--no-validate-ami]
                                  AMI_ID
 
 positional arguments:
@@ -64,6 +65,7 @@ optional arguments:
   --region REGION       AWS region (e.g. us-west-2)
   --encrypted-ami-name NAME
                         Specify the name of the generated encrypted AMI
+  --no-validate-ami     Don't validate encrypted AMI properties
 ```
 
 ## Configuration
@@ -103,23 +105,23 @@ messages are written to stderr.
 
 ## Updating an encrypted AMI
 
-Run **brkt update-encrypted-ami** to update anw encrypted AMI based on an existing
+Run **brkt update-encrypted-ami** to update an encrypted AMI based on an existing
 encrypted image:
 
 ```
 $ brkt update-encrypted-ami --region us-east-1 --updater-ami ami-32430158 ami-72094e18
-11:09:46 Commencing update for AMI ami-72094e18
-11:09:46 Creating guest volume snapshot
-11:10:18 Launching metavisor updater instance
+13:38:14 Using zone us-east-1a
+13:38:15 Updating ami-72094e18
+13:38:15 Creating guest volume snapshot
 ...
-11:11:53 metavisor updater snapshots ready
+13:39:25 Encrypted root drive created.
 ...
-11:11:53 Terminating encryptor instance i-9ecfe120
+13:39:28 waiting for snapshot ready
+13:39:48 metavisor updater snapshots ready
 ...
-11:11:55 Registered AMI ami-b9d795d3 based on the snapshots.
-11:12:00 Created encrypted AMI ami-b9d795d3 based on ami-72094e18
-Done.
-ami-b9d795d3
+13:39:54 Created encrypted AMI ami-63733e09 based on ami-72094e18
+13:39:54 Done.
+ami-63733e09
 ```
 
 When the process completes, the new AMI id is written to stdout.  All log

@@ -80,7 +80,7 @@ def command_encrypt_ami(values, log):
     try:
         # Connect to AWS.
         aws_svc = aws_service.AWSService(
-            session_id, encryptor_ami, default_tags=default_tags)
+            session_id, default_tags=default_tags)
         aws_svc.connect(region, key_name=values.key_name)
     except NoAuthHandlerFound:
         msg = (
@@ -168,32 +168,36 @@ def command_update_encrypted_ami(values, log):
             print(e.message, file=sys.stderr)
             return 1
     region = values.region
-    if util.validate_region(region) == 1:
-        print ('Invalid region %s' % region,
-               file=sys.stderr)
-        return 1
     nonce = util.make_nonce()
     default_tags = encrypt_ami.get_default_tags(nonce, '')
     aws_svc = aws_service.AWSService(
-        nonce, None, default_tags=default_tags)
+        nonce, default_tags=default_tags)
+    if not aws_svc.validate_region(region):
+        print ('Invalid region %s' % region,
+               file=sys.stderr)
+        return 1
     aws_svc.connect(region)
     zones = [str(z.name) for z in aws_svc.conn.get_all_zones()]
     zone = zones[0]
     log.info('Using zone %s', zone)
     encrypted_ami = values.ami
-    guest_ami_error = aws_svc.validate_guest_ami(encrypted_ami)
-    if guest_ami_error:
-        print(guest_ami_error, file=sys.stderr)
-        return 1
+    if not values.no_validate_ami:
+        guest_ami_error = aws_svc.validate_guest_encrypted_ami(encrypted_ami)
+        if guest_ami_error:
+            print ('Encrypted AMI verification failed: %s' % guest_ami_error,
+                   file=sys.stderr)
+            return 1
+    else:
+        log.info('skipping AMI verification')
     updater_ami = values.updater_ami
     updater_ami_error = aws_svc.validate_encryptor_ami(values.updater_ami)
     if updater_ami_error:
         log.error('Update failed: %s', updater_ami_error)
         return 1
     # Initial validation done
-    log.info('Commencing update for AMI %s', encrypted_ami)
+    log.info('Updating %s', encrypted_ami)
     # snapshot the guest's volume
-    guest_snapshot, volume, vol_type, error = \
+    guest_snapshot, volume_info, error = \
         update_encrypted_ami.retrieve_guest_volume_snapshot(
             aws_svc,
             encrypted_ami,
@@ -208,15 +212,15 @@ def command_update_encrypted_ami(values, log):
             encrypted_ami,
             updater_ami,
             guest_snapshot.id,
-            volume.size)
+            volume_info['size'])
     ami = encrypt_ami.register_new_ami(
         aws_svc,
         updater_ami_block_devices[encrypt_ami.NAME_METAVISOR_GRUB_SNAPSHOT],
         updater_ami_block_devices[encrypt_ami.NAME_METAVISOR_ROOT_SNAPSHOT],
         updater_ami_block_devices[encrypt_ami.NAME_METAVISOR_LOG_SNAPSHOT],
         guest_snapshot,
-        vol_type,
-        volume.iops,
+        volume_info['type'],
+        volume_info['iops'],
         encrypted_ami,
         encrypted_ami_name=encrypted_ami_name)
     log.info('Done.')
