@@ -177,9 +177,6 @@ def command_update_encrypted_ami(values, log):
                file=sys.stderr)
         return 1
     aws_svc.connect(region)
-    zones = [str(z.name) for z in aws_svc.conn.get_all_zones()]
-    zone = zones[0]
-    log.info('Using zone %s', zone)
     encrypted_ami = values.ami
     if not values.no_validate_ami:
         guest_ami_error = aws_svc.validate_guest_encrypted_ami(encrypted_ami)
@@ -200,8 +197,7 @@ def command_update_encrypted_ami(values, log):
     guest_snapshot, volume_info, error = \
         update_encrypted_ami.retrieve_guest_volume_snapshot(
             aws_svc,
-            encrypted_ami,
-            zone)
+            encrypted_ami)
     if not guest_snapshot:
         log.error('failed to launch instance %s: %s' % (encrypted_ami, error))
         return 1

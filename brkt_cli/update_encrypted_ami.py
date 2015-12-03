@@ -102,8 +102,7 @@ def snapshot_updater_ami_block_devices(aws_service,
 
 
 def retrieve_guest_volume_snapshot(aws_service,
-                                   encrypted_ami_id,
-                                   zone):
+                                   encrypted_ami_id):
     # Verify expected device mapping is present, return with info
     log.info('Creating guest volume snapshot')
     encrypted_image = aws_service.get_image(encrypted_ami_id)
