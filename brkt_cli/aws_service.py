@@ -402,6 +402,9 @@ class AWSService(BaseAWSService):
         if image.hypervisor != 'xen':
             return '%s uses hypervisor %s.  Only xen is supported' % (
                 ami_id, image.hypervisor)
+        if not image.block_device_mapping.get(image.root_device_name):
+            return '%s: %s not found in block_device_mapping' % (
+                ami_id, image.root_device_name)
         return None
 
     def validate_guest_encrypted_ami(self, ami_id):

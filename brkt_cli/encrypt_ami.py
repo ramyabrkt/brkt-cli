@@ -487,8 +487,12 @@ def run_encryptor_instance(aws_svc, encryptor_image_id,
         bdm['/dev/sda4'] = guest_unencrypted_root
         bdm['/dev/sda5'] = guest_encrypted_root
     else:
-        bdm['/dev/xvdf'] = guest_unencrypted_root
-        bdm['/dev/xvdg'] = guest_encrypted_root
+        # Use 'sd' names even though AWS maps these to 'xvd'
+        # The AWS GUI only exposes 'sd' names, and won't allow
+        # the user to attach to an existing 'sd' name in use, but
+        # would allow conflicts if we used 'xvd' names here.
+        bdm['/dev/sdf'] = guest_unencrypted_root
+        bdm['/dev/sdg'] = guest_encrypted_root
 
     instance = aws_svc.run_instance(encryptor_image_id,
                                     security_group_ids=security_group_ids,
@@ -518,13 +522,16 @@ def run_encryptor_instance(aws_svc, encryptor_image_id,
         aws_svc.create_tags(
             bdm['/dev/sda1'].volume_id, name=NAME_METAVISOR_ROOT_VOLUME)
         aws_svc.create_tags(
-            bdm['/dev/xvdg'].volume_id, name=NAME_ENCRYPTED_ROOT_VOLUME)
+            bdm['/dev/sdg'].volume_id, name=NAME_ENCRYPTED_ROOT_VOLUME)
 
     return instance
 
 
 def run_guest_instance(aws_svc, image_id, subnet_id=None, updater=False):
-    instance = aws_svc.run_instance(image_id, subnet_id=subnet_id)
+    instance = aws_svc.run_instance(image_id,
+                                    instance_type="m3.medium",
+                                    ebs_optimized=False,
+                                    subnet_id=subnet_id)
     if not updater:
         log.info(
             'Launching instance %s to snapshot root disk for %s',
@@ -852,7 +859,7 @@ def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami, brkt_env=None,
         else:
             # HVM instance type
             snap_guest = aws_svc.create_snapshot(
-                encryptor_bdm['/dev/xvdg'].volume_id,
+                encryptor_bdm['/dev/sdg'].volume_id,
                 name=NAME_ENCRYPTED_ROOT_SNAPSHOT,
                 description=description
             )
@@ -866,7 +873,7 @@ def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami, brkt_env=None,
                                         iops=iops,
                                         delete_on_termination=True)
             mv_root_id = encryptor_bdm['/dev/sda1'].volume_id
-            new_bdm['/dev/xvdf'] = dev_guest_root
+            new_bdm['/dev/sdf'] = dev_guest_root
 
         if not legacy:
             log.info("Detaching new guest root %s" % (mv_root_id,))
