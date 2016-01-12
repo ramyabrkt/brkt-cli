@@ -188,6 +188,18 @@ class BaseAWSService(object):
         pass
 
 
+def save_undecorated(dec):
+    """ Save a reference to the undecorated function before decorating. We use
+        the reference to the undecorated function in backwards compatibility
+        tests that check method signatures.
+    """
+    def meta_decorator(f):
+        decorator = dec(f)
+        decorator._undecorated = f
+        return decorator
+    return meta_decorator
+
+
 def retry_boto(error_code_regexp, max_retries=5, initial_sleep_seconds=0.25):
     """ Call a boto function repeatedly until it succeeds.  If the call
     fails with the expected error code, sleep and retry up to max_retries
@@ -315,7 +327,7 @@ class AWSService(BaseAWSService):
         instances = self.conn.get_only_instances([instance_id])
         return _get_first_element(instances, 'InvalidInstanceID.NotFound')
 
-    @retry_boto(error_code_regexp=r'.*\.NotFound')
+    @save_undecorated(retry_boto(error_code_regexp=r'.*\.NotFound'))
     def create_tags(self, resource_id, name=None, description=None):
         tags = dict(self.default_tags)
         if name:
@@ -455,7 +467,7 @@ class AWSService(BaseAWSService):
     def get_images(self, filters=None):
         return self.conn.get_all_images(filters=filters)
 
-    @retry_boto(error_code_regexp=r'InvalidAMIID\.NotFound')
+    @save_undecorated(retry_boto(error_code_regexp=r'InvalidAMIID\.NotFound'))
     def get_image(self, image_id):
         return self.conn.get_image(image_id)
 
