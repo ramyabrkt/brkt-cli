@@ -292,6 +292,15 @@ class AWSService(BaseAWSService):
         if subnet_id:
             log.debug('Running instance in %s', subnet_id)
 
+        # Explicitly set a public IP for the instance. If the subnet is not
+        # publicly accessible, the public IP will be present, but useless.
+        interface = boto.ec2.networkinterface.NetworkInterfaceSpecification(
+            subnet_id=subnet_id,
+            groups=security_group_ids,
+            associate_public_ip_address=True)
+        interfaces = boto.ec2.networkinterface.NetworkInterfaceCollection(
+            interface)
+
         try:
             reservation = self.conn.run_instances(
                 image_id=image_id,
@@ -299,8 +308,7 @@ class AWSService(BaseAWSService):
                 key_name=self.key_name,
                 instance_type=instance_type,
                 block_device_map=block_device_map,
-                security_group_ids=security_group_ids,
-                subnet_id=subnet_id,
+                network_interfaces=interfaces,
                 ebs_optimized=ebs_optimized,
                 user_data=user_data,
                 instance_profile_name=instance_profile_name
