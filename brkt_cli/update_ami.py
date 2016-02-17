@@ -52,8 +52,8 @@ from encrypt_ami import (
 log = logging.getLogger(__name__)
 
 
-def update_ami(aws_svc, encrypted_ami, updater_ami,
-               encrypted_ami_name, subnet_id=None, security_group_ids=None,
+def update_ami(aws_svc, encrypted_ami, updater_ami, encrypted_ami_name,
+               subnet_id=None, security_group_ids=None, brkt_env=None,
                enc_svc_class=encryptor_service.EncryptorService):
     encrypted_guest = None
     updater = None
@@ -68,7 +68,14 @@ def update_ami(aws_svc, encrypted_ami, updater_ami,
         # base to create a new AMI and preserve license
         # information embedded in the guest AMI
         log.info("Launching encrypted guest/updater")
-        user_data = json.dumps({'brkt': {'solo_mode': 'updater'}})
+        user_data = {'brkt': {'solo_mode': 'updater'}}
+        if brkt_env:
+            endpoints = brkt_env.split(',')
+            user_data['brkt'].update({
+                'api_host': endpoints[0],
+                'hsmproxy_host': endpoints[1],
+            })
+        user_data = json.dumps(user_data)
 
         if not security_group_ids:
             vpc_id = None

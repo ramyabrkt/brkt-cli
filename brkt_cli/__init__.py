@@ -307,7 +307,8 @@ def command_update_encrypted_ami(values, log):
     updated_ami_id = update_ami(
         aws_svc, encrypted_ami, encryptor_ami, encrypted_ami_name,
         subnet_id=values.subnet_id,
-        security_group_ids=values.security_group_ids)
+        security_group_ids=values.security_group_ids,
+        brkt_env=values.brkt_env)
     print(updated_ami_id)
     return 0
 
