@@ -29,6 +29,15 @@ def setup_encrypt_ami_args(parser):
         required=True
     )
     parser.add_argument(
+        '--policy-server',
+        metavar='URL',
+        dest='policy_server_url',
+        help=(
+            'Url of your policy server (e.g. 1.2.3.4:8000)'
+        ),
+        required=True
+    )
+    parser.add_argument(
         '--security-group',
         metavar='ID',
         dest='security_group_ids',

@@ -471,15 +471,19 @@ def create_encryptor_security_group(aws_svc, vpc_id=None):
 def run_encryptor_instance(aws_svc, encryptor_image_id,
            snapshot, root_size,
            guest_image_id, brkt_env=None, security_group_ids=None,
-           subnet_id=None, zone=None):
+           subnet_id=None, zone=None, policy_server_url=None):
     bdm = BlockDeviceMapping()
-    user_data = {}
+    user_data = {
+        'brkt': {
+            'policy_server_url': policy_server_url
+        }
+    }
     if brkt_env:
         endpoints = brkt_env.split(',')
-        user_data['brkt'] = {
+        user_data['brkt'].update({
             'api_host': endpoints[0],
             'hsmproxy_host': endpoints[1],
-        }
+        })
 
     image = aws_svc.get_image(encryptor_image_id)
     virtualization_type = image.virtualization_type
@@ -514,7 +518,8 @@ def run_encryptor_instance(aws_svc, encryptor_image_id,
                                     user_data=json.dumps(user_data),
                                     placement=zone,
                                     block_device_map=bdm,
-                                    subnet_id=subnet_id)
+                                    subnet_id=subnet_id,
+                                    shutdown_behavior='terminate')
     aws_svc.create_tags(
         instance.id,
         name=NAME_ENCRYPTOR,
@@ -953,7 +958,8 @@ def register_ami(aws_svc, encryptor_instance, encryptor_image, name,
 
 
 def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami, brkt_env=None,
-            encrypted_ami_name=None, subnet_id=None, security_group_ids=None):
+            encrypted_ami_name=None, subnet_id=None, security_group_ids=None,
+            policy_server_url=None):
     encryptor_instance = None
     ami = None
     snapshot_id = None
@@ -1025,6 +1031,7 @@ def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami, brkt_env=None,
             security_group_ids=security_group_ids,
             subnet_id=subnet_id,
             zone=guest_instance.placement,
+            policy_server_url=policy_server_url
         )
 
 

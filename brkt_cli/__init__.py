@@ -191,7 +191,8 @@ def command_encrypt_ami(values, log):
         encrypted_ami_name=values.encrypted_ami_name,
         subnet_id=values.subnet_id,
         security_group_ids=values.security_group_ids,
-        brkt_env=values.brkt_env
+        brkt_env=values.brkt_env,
+        policy_server_url=values.policy_server_url
     )
     # Print the AMI ID to stdout, in case the caller wants to process
     # the output.  Log messages go to stderr.

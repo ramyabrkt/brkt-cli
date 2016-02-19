@@ -49,7 +49,8 @@ class BaseAWSService(object):
                      subnet_id=None,
                      user_data=None,
                      ebs_optimized=True,
-                     instance_profile_name=None):
+                     instance_profile_name=None,
+                     shutdown_behavior=None):
         pass
 
     @abc.abstractmethod
@@ -272,7 +273,8 @@ class AWSService(BaseAWSService):
                      subnet_id=None,
                      user_data=None,
                      ebs_optimized=True,
-                     instance_profile_name=None):
+                     instance_profile_name=None,
+                     shutdown_behavior=None):
         if security_group_ids is None:
             security_group_ids = []
         log.debug('Starting a new instance based on %s', image_id)
@@ -293,7 +295,8 @@ class AWSService(BaseAWSService):
                 subnet_id=subnet_id,
                 ebs_optimized=ebs_optimized,
                 user_data=user_data,
-                instance_profile_name=instance_profile_name
+                instance_profile_name=instance_profile_name,
+                instance_initiated_shutdown_behavior=shutdown_behavior
             )
             return reservation.instances[0]
         except EC2ResponseError:
