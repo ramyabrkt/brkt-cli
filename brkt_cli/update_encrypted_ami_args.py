@@ -45,6 +45,15 @@ def setup_update_encrypted_ami(parser):
         dest='subnet_id',
         help='Launch instances in this subnet'
     )
+    parser.add_argument(
+        '--ntp-server',
+        metavar='DNS Name',
+        dest='ntp_server',
+        action='append',
+        help=(
+            'NTP server to sync Metavisor clock.'
+        )
+    )
     # Optional yeti endpoints. Hidden because it's only used for development.
     parser.add_argument(
         '--brkt-env',

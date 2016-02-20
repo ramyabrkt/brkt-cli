@@ -54,6 +54,15 @@ def setup_encrypt_ami_args(parser):
             'May be specified multiple times.'
         )
     )
+    parser.add_argument(
+        '--ntp-server',
+        metavar='DNS Name',
+        dest='ntp_server',
+        action='append',
+        help=(
+            'NTP server to sync Metavisor clock.'
+        )
+    )
 
     # Optional yeti endpoints. Hidden because it's only used for development.
     # If you're using this option, it should be passed as a comma separated
