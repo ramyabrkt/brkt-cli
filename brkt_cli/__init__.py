@@ -191,7 +191,8 @@ def command_encrypt_ami(values, log):
         encrypted_ami_name=values.encrypted_ami_name,
         subnet_id=values.subnet_id,
         security_group_ids=values.security_group_ids,
-        brkt_env=values.brkt_env
+        brkt_env=values.brkt_env,
+        ntp_servers=values.ntp_servers
     )
     # Print the AMI ID to stdout, in case the caller wants to process
     # the output.  Log messages go to stderr.
@@ -307,7 +308,8 @@ def command_update_encrypted_ami(values, log):
     updated_ami_id = update_ami(
         aws_svc, encrypted_ami, encryptor_ami, encrypted_ami_name,
         subnet_id=values.subnet_id,
-        security_group_ids=values.security_group_ids)
+        security_group_ids=values.security_group_ids,
+        ntp_servers=values.ntp_servers)
     print(updated_ami_id)
     return 0
 
