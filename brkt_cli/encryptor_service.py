@@ -26,6 +26,7 @@ ENCRYPT_ENCRYPTING = 'encrypting'
 ENCRYPTOR_STATUS_PORT = 8000
 FAILURE_CODE_UNSUPPORTED_GUEST = 'unsupported_guest'
 FAILURE_CODE_AWS_PERMISSIONS = 'insufficient_aws_permissions'
+FAILURE_CODE_INVALID_NTP_SERVERS = 'invalid ntp servers'
 
 log = logging.getLogger(__name__)
 
@@ -93,6 +94,8 @@ class EncryptorService(BaseEncryptorService):
             info['percent_complete'] = 0
             if info['state'] == ENCRYPT_SUCCESSFUL:
                 info['percent_complete'] = 100
+            elif info['state'] == ENCRYPT_FAILED:
+                info['percent_complete'] = 0
             elif info['bytes_total'] > 0:
                 ratio = float(info['bytes_written']) / info['bytes_total']
                 info['percent_complete'] = int(100 * ratio)
