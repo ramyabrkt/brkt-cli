@@ -12,7 +12,8 @@ from brkt_cli.validation import ValidationError
 from gce_service import gce_metadata_from_userdata
 from brkt_cli.encryptor_service import wait_for_encryption
 from brkt_cli.encryptor_service import wait_for_encryptor_up
-
+from brkt_cli import util
+import httplib
 
 log = logging.getLogger(__name__)
 
@@ -76,7 +77,8 @@ def do_encryption(gce_svc,
 
         wait_for_encryptor_up(enc_svc, Deadline(600))
         wait_for_encryption(enc_svc)
-        gce_svc.delete_instance(zone, encryptor)
+        util.retry(function=gce_svc.delete_instance,
+            on=[httplib.BadStatusLine])(zone, encryptor)
     except Exception as e:
         raise e
 
