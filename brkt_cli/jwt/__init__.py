@@ -11,6 +11,7 @@
 # CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and
 # limitations under the License.
+import hashlib
 import json
 import logging
 import re
@@ -93,7 +94,11 @@ def read_signing_key(pem_path):
     except IOError as e:
         raise ValidationError(e)
     except ValueError:
-        raise ValidationError('%s must be a PEM private key' % pem_path)
+        if log.isEnabledFor(logging.DEBUG):
+            log.exception('Unable to load signing key %s', pem_path)
+        raise ValidationError(
+            'Signing key must be a 384-bit ECDSA private key (NIST P-384) in '
+            'PEM format')
 
     if signing_key.curve != NIST384p:
         raise ValidationError(
@@ -149,7 +154,11 @@ def make_jwt(signing_key, exp=None, nbf=None, cnc=None, claims=None):
     :return the JWT as a string
     """
 
-    header_dict = {'typ': 'JWT', 'alg': 'ES384'}
+    header_dict = {
+        'typ': 'JWT',
+        'alg': 'ES384',
+        'kid': jwk.get_thumbprint(signing_key.get_verifying_key())
+    }
 
     payload_dict = {}
     if claims:
@@ -157,8 +166,7 @@ def make_jwt(signing_key, exp=None, nbf=None, cnc=None, claims=None):
     payload_dict.update({
         'jti': util.make_nonce(),
         'iss': 'brkt-cli-' + brkt_cli.VERSION,
-        'iat': int(time.time()),
-        'kid': jwk.get_thumbprint(signing_key.get_verifying_key())
+        'iat': int(time.time())
     })
 
     if exp:
@@ -168,11 +176,18 @@ def make_jwt(signing_key, exp=None, nbf=None, cnc=None, claims=None):
     if cnc is not None:
         payload_dict['cnc'] = cnc
 
-    header_json = json.dumps(header_dict, sort_keys=True)
+    header_json = json.dumps(
+        header_dict, sort_keys=True, separators=(',', ':')
+    ).encode('utf-8')
     header_b64 = urlsafe_b64encode(header_json)
-    payload_json = json.dumps(payload_dict, sort_keys=True)
+
+    payload_json = json.dumps(
+        payload_dict, sort_keys=True, separators=(',', ':')
+    ).encode('utf-8')
     payload_b64 = urlsafe_b64encode(payload_json)
-    signature = signing_key.sign('%s.%s' % (header_b64, payload_b64))
+
+    signature = signing_key.sign(
+        '%s.%s' % (header_b64, payload_b64), hashfunc=hashlib.sha384)
     signature_b64 = urlsafe_b64encode(signature)
 
     log.debug('Header: %s', header_json)
@@ -220,8 +235,8 @@ def setup_make_jwt_args(subparsers):
         '--signing-key',
         metavar='PATH',
         help=(
-            'The private key that is used to sign the JWT. The key must be '
-            'in PEM format.'),
+            'The private key that is used to sign the JWT. The key must be a '
+            '384-bit ECDSA private key (NIST P-384) in PEM format.'),
         required=True
     )
     parser.add_argument(
