@@ -145,10 +145,12 @@ def make_instance_config(values=None, brkt_env=None,
             raise ValidationError(
                 'Can only specify ca-cert for instance in Creator mode'
             )
-        if not values.brkt_env:
+        if not brkt_env:
             raise ValidationError(
-                'Must specify brkt-env when specifying ca-cert.'
+                'Must specify --brkt-env or --service-domain when '
+                'specifying --ca-cert.'
             )
+
         try:
             with open(values.ca_cert, 'r') as f:
                 ca_cert_data = f.read()
