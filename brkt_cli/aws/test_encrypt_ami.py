@@ -413,6 +413,7 @@ class TestBrktEnv(unittest.TestCase):
 
         api_host_port = 'api.example.com:777'
         hsmproxy_host_port = 'hsmproxy.example.com:888'
+        network_host_port = 'network.example.com:999'
         aws_svc, encryptor_image, guest_image = build_aws_service()
 
         def run_instance_callback(args):
@@ -427,8 +428,13 @@ class TestBrktEnv(unittest.TestCase):
                     hsmproxy_host_port,
                     d['brkt']['hsmproxy_host']
                 )
+                self.assertEquals(
+                    network_host_port,
+                    d['brkt']['network_host']
+                )
 
-        cli_args = '--brkt-env %s,%s' % (api_host_port, hsmproxy_host_port)
+        cli_args = '--brkt-env %s,%s,%s' % (api_host_port, hsmproxy_host_port,
+                                         network_host_port)
         values = instance_config_args_to_values(cli_args)
         brkt_env = brkt_cli.brkt_env_from_values(values)
         ic = make_instance_config(values, brkt_env)
@@ -455,7 +461,9 @@ class TestBrktEnv(unittest.TestCase):
 
         api_host_port = 'api.example.com:777'
         hsmproxy_host_port = 'hsmproxy.example.com:888'
-        cli_args = '--brkt-env %s,%s' % (api_host_port, hsmproxy_host_port)
+        network_host_port = 'network.example.com:999'
+        cli_args = '--brkt-env %s,%s,%s' % (api_host_port, hsmproxy_host_port,
+                                         network_host_port)
         values = instance_config_args_to_values(cli_args)
         brkt_env = brkt_cli.brkt_env_from_values(values)
         ic = make_instance_config(values, brkt_env)
@@ -471,6 +479,10 @@ class TestBrktEnv(unittest.TestCase):
                 self.assertEquals(
                     hsmproxy_host_port,
                     d['brkt']['hsmproxy_host']
+                )
+                self.assertEquals(
+                    network_host_port,
+                    d['brkt']['network_host']
                 )
                 self.assertEquals(
                     'updater',
