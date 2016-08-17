@@ -190,6 +190,7 @@ def get_payload(jwt_string):
 def setup_make_jwt_args(subparsers):
     parser = subparsers.add_parser(
         SUBCOMMAND_NAME,
+        help='Generate a JSON Web Token',
         description=(
             'Generate a JSON Web Token for encrypting an instance or '
             'launching an encrypted instance. A timestamp can be either a '
