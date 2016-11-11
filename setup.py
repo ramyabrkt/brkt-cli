@@ -51,7 +51,7 @@ setup(
     ],
     install_requires=[
         'boto>=2.38.0',
-        'cryptography>=1.3.2',
+        'cryptography<1.5,>=1.3.2',
         'google-api-python-client>=1.5.0',
         'iso8601>=0.1.11',
         'oauth2client<3,>= 2.0.0',
