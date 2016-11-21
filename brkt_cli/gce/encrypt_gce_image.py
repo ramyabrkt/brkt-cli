@@ -35,6 +35,14 @@ def setup_encryption(gce_svc,
         # of the unencrypted guest root
         log.info('Creating disk for encrypted image')
         gce_svc.create_disk(zone, encrypted_image_disk, guest_size * 2 + 1)
+        #
+        # Amazing but true - just attach a big drive to get more IOPS
+        # to be shared by all volumes attached to this VM. We don't
+        # use the dummy-iops drive but get to use it's IOPS for other
+        # drives.
+        #
+        log.info('Creating dummy IOPS disk')
+        gce_svc.create_disk(zone, encrypted_image_disk + "dummy-iops", 500)
     except:
         log.info('Encryption setup failed')
         raise
@@ -59,7 +67,9 @@ def do_encryption(gce_svc,
                          network=network,
                          subnet=subnetwork,
                          disks=[gce_svc.get_disk(zone, instance_name),
-                                gce_svc.get_disk(zone, encrypted_image_disk)],
+                                gce_svc.get_disk(zone, encrypted_image_disk),
+                                gce_svc.get_disk(zone,
+                                    encrypted_image_disk+"dummy-iops")],
                          metadata=metadata)
 
     try:
