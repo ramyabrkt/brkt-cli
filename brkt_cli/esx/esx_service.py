@@ -253,7 +253,7 @@ class VCenterService(BaseVCenterService):
                  cluster_name, no_of_cpus, memoryGB, session_id, verify):
         super(VCenterService, self).__init__(
             host, user, password, port, datacenter_name, datastore_name,
-            esx_host, cluster_name, no_of_cpus, memoryGB, session_id)
+            esx_host, cluster_name, no_of_cpus, memoryGB, session_id, verify)
 
     @timeout(30)
     def _s_connect(self):
@@ -263,11 +263,12 @@ class VCenterService(BaseVCenterService):
             context = ssl.SSLContext
         except:
             context = None
+        if self.verify:
+            context = None
         if context:
             # Change ssl context due to bug in pyvmomi
             context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-            if not self.verify:
-                context.verify_mode = ssl.CERT_NONE
+            context.verify_mode = ssl.CERT_NONE
             self.si = connect.SmartConnect(host=self.host,
                                            user=self.user,
                                            pwd=self.password,
@@ -911,7 +912,7 @@ def initialize_vcenter(host, user, password, port,
     vc_swc = VCenterService(host, user, password, port,
                             datacenter_name, datastore_name, esx_host,
                             cluster_name, no_of_cpus, memory_gb, session_id,
-                            verify=True)
+                            verify)
     vc_swc.connect()
     return vc_swc
 
