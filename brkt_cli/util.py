@@ -208,8 +208,7 @@ def read_private_key(pem_path):
             password = getpass.getpass('Encrypted private key password: ')
         crypto = brkt_cli.crypto.from_private_key_pem(pem, password=password)
     except (ValueError, IOError) as e:
-        if log.isEnabledFor(logging.DEBUG):
-            log.exception('Unable to load signing key from %s', pem_path)
+        log.debug('Unable to load signing key from %s', pem_path, exc_info=1)
         raise ValidationError(
             'Unable to load signing key: %s' % e)
 

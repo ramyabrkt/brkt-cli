@@ -28,8 +28,7 @@ def _write_file(path, content):
         with open(path, 'w') as f:
             f.write(content)
     except IOError as e:
-        if log.isEnabledFor(logging.DEBUG):
-            log.exception('Unable to write to %s', path)
+        log.debug('Unable to write to %s', path, exc_info=1)
         raise ValidationError('Unable to write to %s: %s' % (path, e))
 
 
