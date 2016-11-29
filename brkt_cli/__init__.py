@@ -407,10 +407,35 @@ def add_brkt_env_to_brkt_config(brkt_env, brkt_config):
         brkt_config['network_host'] = network_host_port
 
 
-class SortingHelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+class SortingHelpFormatter(argparse.HelpFormatter):
     def add_arguments(self, actions):
         actions = sorted(actions, key=attrgetter('option_strings'))
         super(SortingHelpFormatter, self).add_arguments(actions)
+
+    def _get_help_string(self, action):
+        """ Append the default value to the argument description.  This code
+        is inspired by argparse.ArgumentDefaultsHelpFormatter, with the
+        following differences:
+
+        1. Don't print "default: None".  The behavior for options that don't
+        have defaults is already clear from the usage output.
+
+        2. Don't print the default for boolean options.  Behavior for boolean
+        options is also already clear.  Printing a default for 'store_false'
+        results in confusing usage output for options with negative names,
+        like --no-validate.
+        """
+        help = action.help
+
+        if action.default is None or type(action.default) == bool:
+            return help
+
+        if '%(default)' not in action.help:
+            if action.default is not argparse.SUPPRESS:
+                defaulting_nargs = [argparse.OPTIONAL, argparse.ZERO_OR_MORE]
+                if action.option_strings or action.nargs in defaulting_nargs:
+                    help += ' (default: %(default)s)'
+        return help
 
 
 def main():
