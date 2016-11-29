@@ -280,8 +280,7 @@ def _check_version():
         # If we can't get the list of versions from PyPI, print the error
         # and return true.  We don't want the version check to block people
         # from getting their work done.
-        if log.isEnabledFor(logging.DEBUG):
-            log.exception('')
+        log.debug('', exc_info=1)
         log.info('Unable to load brkt-cli versions from PyPI: %s', e)
         return True
 
@@ -382,8 +381,7 @@ def check_jwt_auth(brkt_env, jwt):
                 'Use --no-validate to disable validation.' % e.code
             )
     except IOError:
-        if log.isEnabledFor(logging.DEBUG):
-            log.exception('')
+        log.debug('', exc_info=1)
         log.warn(
             'Unable to validate token against %s.  Use --no-validate to '
             'disable validation.',
@@ -577,16 +575,12 @@ def main():
         allow_debug_log = False
         print(e, file=sys.stderr)
     except util.BracketError as e:
-        if values.verbose:
-            log.exception(e.message)
-        else:
-            log.error(e.message)
+        log.debug('', exc_info=1)
+        log.error(e.message)
     except KeyboardInterrupt:
         allow_debug_log = False
-        if values.verbose:
-            log.exception('Interrupted by user')
-        else:
-            log.error('Interrupted by user')
+        log.debug('', exc_info=1)
+        log.error('Interrupted by user')
     finally:
         if debug_handler:
             if result != 0 and allow_debug_log:

@@ -67,35 +67,27 @@ def _handle_aws_errors(func):
                 'Unable to connect to AWS.  Are your AWS_ACCESS_KEY_ID and '
                 'AWS_SECRET_ACCESS_KEY environment variables set?'
             )
-            if log.isEnabledFor(logging.DEBUG):
-                log.exception(msg)
-            else:
-                log.error(msg)
+            log.debug('', exc_info=1)
+            log.error(msg)
         except EC2ResponseError as e:
             if e.error_code == 'AuthFailure':
                 msg = 'Check your AWS login credentials and permissions'
-                if log.isEnabledFor(logging.DEBUG):
-                    log.exception(msg)
-                else:
-                    log.error(msg + ': ' + e.error_message)
+                log.debug('', exc_info=1)
+                log.error(msg + ': ' + e.error_message)
             elif e.error_code in (
                     'InvalidKeyPair.NotFound',
                     'InvalidSubnetID.NotFound',
                     'InvalidGroup.NotFound'
             ):
-                if log.isEnabledFor(logging.DEBUG):
-                    log.exception(e.error_message)
-                else:
-                    log.error(e.error_message)
+                log.debug('', exc_info=1)
+                log.error(e.error_message)
             elif e.error_code == 'UnauthorizedOperation':
-                if log.isEnabledFor(logging.DEBUG):
-                    log.exception(e.error_message)
-                else:
-                    log.error(e.error_message)
-                    log.error(
-                        'Unauthorized operation.  Check the IAM policy for your '
-                        'AWS account.'
-                    )
+                log.debug('', exc_info=1)
+                log.error(e.error_message)
+                log.error(
+                    'Unauthorized operation.  Check the IAM policy for your '
+                    'AWS account.'
+                )
             else:
                 raise
         return 1
