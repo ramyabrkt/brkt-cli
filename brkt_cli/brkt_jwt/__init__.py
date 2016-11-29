@@ -172,8 +172,7 @@ def get_header(jwt_string):
     try:
         return jwt.get_unverified_header(jwt_string)
     except jwt.InvalidTokenError as e:
-        if log.isEnabledFor(logging.DEBUG):
-            log.exception('')
+        log.debug('', exc_info=1)
         raise ValidationError('Unable to decode token: %s' % e)
 
 
@@ -185,8 +184,7 @@ def get_payload(jwt_string):
     try:
         return jwt.decode(jwt_string, verify=False)
     except jwt.InvalidTokenError as e:
-        if log.isEnabledFor(logging.DEBUG):
-            log.exception('')
+        log.debug('', exc_info=1)
         raise ValidationError('Unable to decode token: %s' % e)
 
 
