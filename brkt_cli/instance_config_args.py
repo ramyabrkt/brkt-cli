@@ -47,8 +47,8 @@ def setup_instance_config_args(parser, parsed_config,
         dest='ntp_servers',
         action='append',
         help=(
-            'Optional NTP server to sync Metavisor clock. '
-            'May be specified multiple times.'
+            'NTP server to sync Metavisor clock. May be specified multiple '
+            'times.'
         )
     )
 
@@ -56,17 +56,15 @@ def setup_instance_config_args(parser, parsed_config,
     proxy_group.add_argument(
         '--proxy',
         metavar='HOST:PORT',
-        help=(
-            'Use this HTTPS proxy during encryption.  '
-            'May be specified multiple times.'
-        ),
+        help='Proxy that Metavisor uses to talk to the Bracket service',
         dest='proxies',
         action='append'
     )
     proxy_group.add_argument(
         '--proxy-config-file',
         metavar='PATH',
-        help='Path to proxy.yaml file that will be used during encryption',
+        help='proxy.yaml file that defines the proxy configuration '
+             'that metavisor uses to talk to the Bracket service',
         dest='proxy_config_file'
     )
 
@@ -125,9 +123,9 @@ def setup_instance_config_args(parser, parsed_config,
     parser.add_argument(
         '--token',
         help=(
-            'Token that the encrypted instance will use to '
-            'authenticate with the Bracket service.  Use the make-token '
-            'subcommand to generate a token.'
+            'Token (JWT) that Metavisor uses to authenticate with the '
+            'Bracket service.  Use the make-token subcommand to generate a '
+            'token.'
         ),
         metavar='TOKEN',
         dest='token',

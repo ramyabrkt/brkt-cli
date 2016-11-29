@@ -68,7 +68,8 @@ class MakeUserDataSubcommand(Subcommand):
             formatter_class=brkt_cli.SortingHelpFormatter
         )
 
-        setup_instance_config_args(parser, parsed_config)
+        setup_instance_config_args(
+            parser, parsed_config, mode=INSTANCE_METAVISOR_MODE)
 
         parser.add_argument(
             '-v',
@@ -86,11 +87,12 @@ class MakeUserDataSubcommand(Subcommand):
         )
         parser.add_argument(
             '--guest-user-data-file',
-            metavar='FILENAME:TYPE',
+            metavar='PATH:TYPE',
             dest='make_user_data_guest_files',
             action='append',
-            help=('User-data file and MIME contents type to be passed to the '
-                  'guest instance. Can be specified multiple times.')
+            help=('User-data file and MIME content type to be passed to '
+                  'cloud-init on the guest instance. Can be specified '
+                  'multiple times.')
         )
         # Certain customers need to set the FQDN of the guest instance, which
         # is used by Metavisor as the CN field of the Subject DN in the cert
