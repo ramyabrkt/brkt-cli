@@ -51,8 +51,8 @@ from brkt_cli.validation import ValidationError
 log = logging.getLogger(__name__)
 
 
-PV_ENCRYPTOR_AMIS_URL = "https://solo-brkt-prod-net.s3.amazonaws.com/amis.json"
-ENCRYPTOR_AMIS_URL = "https://solo-brkt-prod-net.s3.amazonaws.com/hvm_amis.json"
+ENCRYPTOR_AMIS_URL = \
+    "https://solo-brkt-prod-net.s3.amazonaws.com/hvm_amis.json"
 
 
 def _handle_aws_errors(func):
@@ -217,12 +217,7 @@ def run_encrypt(values, config):
     else:
         guest_image = aws_svc.get_image(values.ami)
 
-    pv = _use_pv_metavisor(values, guest_image)
-    encryptor_ami = (
-        values.encryptor_ami or
-        _get_encryptor_ami(values.region, pv=pv)
-    )
-
+    encryptor_ami = values.encryptor_ami or _get_encryptor_ami(values.region)
     default_tags = encrypt_ami.get_default_tags(session_id, encryptor_ami)
     default_tags.update(brkt_cli.parse_tags(values.tags))
     aws_svc.default_tags = default_tags
@@ -280,12 +275,7 @@ def run_update(values, config):
 
     aws_svc.connect(values.region, key_name=values.key_name)
     encrypted_image = _validate_ami(aws_svc, values.ami)
-    pv = _use_pv_metavisor(values, encrypted_image)
-    encryptor_ami = (
-        values.encryptor_ami or
-        _get_encryptor_ami(values.region, pv=pv)
-    )
-
+    encryptor_ami = values.encryptor_ami or _get_encryptor_ami(values.region)
     default_tags = encrypt_ami.get_default_tags(nonce, encryptor_ami)
     default_tags.update(brkt_cli.parse_tags(values.tags))
     aws_svc.default_tags = default_tags
@@ -763,25 +753,14 @@ def _validate_region(aws_svc, region_name):
         )
 
 
-def _use_pv_metavisor(values, guest_image):
-    """ Return True if we should use the paravirtual metavisor AMI,
-    depending on whether the caller specified --pv and the virtualization
-    type of the guest image.
-    """
-    return values.pv or guest_image.virtualization_type == 'paravirtual'
-
-
-def _get_encryptor_ami(region_name, pv=False):
+def _get_encryptor_ami(region_name):
     """ Read the list of AMIs from the AMI endpoint and return the AMI ID
     for the given region.
 
     :raise ValidationError if the region is not supported
     :raise BracketError if the list of AMIs cannot be read
     """
-    if pv:
-        bucket_url = PV_ENCRYPTOR_AMIS_URL
-    else:
-        bucket_url = ENCRYPTOR_AMIS_URL
+    bucket_url = ENCRYPTOR_AMIS_URL
 
     log.debug('Getting encryptor AMI list from %s', bucket_url)
     r = urllib2.urlopen(bucket_url)
