@@ -47,12 +47,6 @@ def setup_update_encrypted_ami(parser):
         default='m3.medium'
     )
     parser.add_argument(
-        '--pv',
-        action='store_true',
-        help='Use the PV encryptor',
-        dest='pv'
-    )
-    parser.add_argument(
         '--no-validate',
         dest='validate',
         action='store_false',
