@@ -111,14 +111,6 @@ class BaseAWSService(object):
         pass
 
     @abc.abstractmethod
-    def register_image(self,
-                       kernel_id,
-                       block_device_map,
-                       name=None,
-                       description=None):
-        pass
-
-    @abc.abstractmethod
     def get_image(self, image_id, retry=False):
         pass
 
@@ -410,22 +402,6 @@ class AWSService(BaseAWSService):
             if e.error_code != 'InvalidVolume.NotFound':
                 raise
         return True
-
-    def register_image(self,
-                       kernel_id,
-                       block_device_map,
-                       name=None,
-                       description=None):
-        log.debug('Registering image.')
-        register_image = self.retry(self.conn.register_image)
-        return register_image(
-            name=name,
-            description=description,
-            architecture='x86_64',
-            kernel=kernel_id,
-            root_device_name='/dev/sda1',
-            virtualization_type='paravirtual'
-        )
 
     def get_images(self, filters=None, owners=None):
         get_all_images = self.retry(self.conn.get_all_images)

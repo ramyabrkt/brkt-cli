@@ -272,7 +272,6 @@ class DummyAWSService(aws_service.BaseAWSService):
         del(self.volumes[volume_id])
 
     def register_image(self,
-                       kernel_id,
                        block_device_map,
                        name=None,
                        description=None):
@@ -370,15 +369,13 @@ def build_aws_service():
     bdm = BlockDeviceMapping()
     bdm['/dev/sda1'] = BlockDeviceType()
     bdm['/dev/sdg'] = BlockDeviceType()
-    id = aws_svc.register_image(
-        kernel_id=None, name='brkt-avatar', block_device_map=bdm)
+    id = aws_svc.register_image(name='brkt-avatar', block_device_map=bdm)
     encryptor_image = aws_svc.get_image(id)
 
     # Guest image
     bdm = BlockDeviceMapping()
     bdm['/dev/sda1'] = BlockDeviceType()
-    id = aws_svc.register_image(
-        kernel_id=None, name='Guest image', block_device_map=bdm)
+    id = aws_svc.register_image(name='Guest image', block_device_map=bdm)
     guest_image = aws_svc.get_image(id)
 
     return aws_svc, encryptor_image, guest_image
