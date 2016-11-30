@@ -246,7 +246,7 @@ class DummyAWSService(aws_service.BaseAWSService):
         image.state = 'available'
         image.name = name
         image.description = 'This is a test'
-        image.virtualization_type = 'paravirtual'
+        image.virtualization_type = 'hvm'
         image.root_device_name = '/dev/sda1'
         i = self.get_instance(instance_id)
         rdn = image.root_device_name
@@ -282,7 +282,7 @@ class DummyAWSService(aws_service.BaseAWSService):
         image.state = 'available'
         image.name = name
         image.description = description
-        image.virtualization_type = 'paravirtual'
+        image.virtualization_type = 'hvm'
         image.root_device_type = 'ebs'
         image.hypervisor = 'xen'
         self.images[image.id] = image
@@ -368,9 +368,8 @@ def build_aws_service():
 
     # Encryptor image
     bdm = BlockDeviceMapping()
-    for n in (1, 2, 3, 5):
-        device_name = '/dev/sda%d' % n
-        bdm[device_name] = BlockDeviceType()
+    bdm['/dev/sda1'] = BlockDeviceType()
+    bdm['/dev/sdg'] = BlockDeviceType()
     id = aws_svc.register_image(
         kernel_id=None, name='brkt-avatar', block_device_map=bdm)
     encryptor_image = aws_svc.get_image(id)

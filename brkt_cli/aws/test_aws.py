@@ -266,9 +266,7 @@ class TestEncryptAMIBackwardsCompatibility(unittest.TestCase):
             'AMI_NAME_MAX_LENGTH',
             'DESCRIPTION_SNAPSHOT',
             'NAME_ENCRYPTOR',
-            'NAME_METAVISOR_ROOT_VOLUME',
-            'NAME_METAVISOR_GRUB_VOLUME',
-            'NAME_METAVISOR_LOG_VOLUME'
+            'NAME_METAVISOR_ROOT_VOLUME'
         )
         for attr in required_attributes:
             self.assertTrue(
