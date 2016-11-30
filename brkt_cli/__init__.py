@@ -281,7 +281,8 @@ def _check_version():
         # and return true.  We don't want the version check to block people
         # from getting their work done.
         log.debug('', exc_info=1)
-        log.info('Unable to load brkt-cli versions from PyPI: %s', e)
+        msg = e.message or type(e).__name__
+        log.info('Unable to load brkt-cli versions from PyPI: %s', msg)
         return True
 
     if not _is_version_supported(VERSION, supported_versions):
