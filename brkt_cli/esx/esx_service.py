@@ -806,7 +806,10 @@ class VCenterService(BaseVCenterService):
         if validate_mf:
             # Load checksums for each file
             mf_checksum = None
-            mf_file_name = ovf_name[:ovf_name.find(".ovf")] + ".mf"
+            if ovf_name.endswith('.ovf'):
+                mf_file_name = ovf_name[:ovf_name.find(".ovf")] + ".mf"
+            else:
+                mf_file_name = ovf_name + '.mf'
             mf_path = os.path.join(target_path, mf_file_name)
             with open(mf_path, 'r') as mf_file:
                 mf_checksum = json.load(mf_file)
