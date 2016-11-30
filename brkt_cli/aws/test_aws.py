@@ -42,7 +42,6 @@ class DummyValues(object):
         self.proxies = []
         self.proxy_config_file = None
         self.status_port = None
-        self.pv = None
 
 
 class TestValidation(unittest.TestCase):
@@ -258,29 +257,6 @@ class TestValidation(unittest.TestCase):
         # Bogus region.
         with self.assertRaises(ValidationError):
             brkt_cli.aws._validate_region(aws_svc, 'foobar')
-
-
-class TestVirtualizationType(unittest.TestCase):
-
-    def test_use_pv_metavisor(self):
-        values = DummyValues()
-
-        guest_image = Image()
-
-        values.pv = None
-        guest_image.virtualization_type = 'paravirtual'
-        self.assertTrue(brkt_cli.aws._use_pv_metavisor(values, guest_image))
-
-        values.pv = True
-        self.assertTrue(brkt_cli.aws._use_pv_metavisor(values, guest_image))
-
-        values.pv = None
-        guest_image.virtualization_type = 'hvm'
-        self.assertFalse(brkt_cli.aws._use_pv_metavisor(values, guest_image))
-
-        values.pv = True
-        guest_image.virtualizaiton_type = 'hvm'
-        self.assertTrue(brkt_cli.aws._use_pv_metavisor(values, guest_image))
 
 
 class TestEncryptAMIBackwardsCompatibility(unittest.TestCase):
