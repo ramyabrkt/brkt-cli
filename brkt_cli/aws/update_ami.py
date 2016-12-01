@@ -25,8 +25,6 @@ import json
 import logging
 import os
 
-from boto.ec2.blockdevicemapping import EBSBlockDeviceType
-
 import encrypt_ami
 from brkt_cli import encryptor_service
 from brkt_cli.encryptor_service import (
@@ -42,16 +40,12 @@ from encrypt_ami import (
     log_exception_console,
     wait_for_instance,
     wait_for_image,
-    wait_for_snapshots,
     DESCRIPTION_GUEST_CREATOR,
     DESCRIPTION_METAVISOR_UPDATER,
-    DESCRIPTION_SNAPSHOT,
     NAME_GUEST_CREATOR,
     NAME_METAVISOR_UPDATER,
     NAME_ENCRYPTED_ROOT_SNAPSHOT,
-    NAME_METAVISOR_GRUB_SNAPSHOT,
     NAME_METAVISOR_ROOT_SNAPSHOT,
-    NAME_METAVISOR_LOG_SNAPSHOT,
 )
 
 log = logging.getLogger(__name__)
@@ -176,10 +170,7 @@ def update_ami(aws_svc, encrypted_ami, updater_ami, encrypted_ami_name,
         updater_bdm = updater.block_device_mapping
 
         # Step 3. Detach old BSD drive(s) and delete from encrypted guest
-        if guest_image.virtualization_type == 'paravirtual':
-            d_list = ['/dev/sda1', '/dev/sda2', '/dev/sda3']
-        else:
-            d_list = [encrypted_guest.root_device_name]
+        d_list = [encrypted_guest.root_device_name]
         for d in d_list:
             log.info("Detaching old metavisor disk: %s from %s" %
                 (guest_bdm[d].volume_id, encrypted_guest.id))
@@ -191,38 +182,11 @@ def update_ami(aws_svc, encrypted_ami, updater_ami, encrypted_ami_name,
 
         # Step 4. Snapshot MV volume(s)
         log.info("Creating snapshots")
-        if guest_image.virtualization_type == 'paravirtual':
-            description = DESCRIPTION_SNAPSHOT % {'image_id': updater.id}
-            snap_root = aws_svc.create_snapshot(
-                updater_bdm['/dev/sda2'].volume_id,
-                name=NAME_METAVISOR_ROOT_SNAPSHOT,
-                description=description
-            )
-            snap_log = aws_svc.create_snapshot(
-                updater_bdm['/dev/sda3'].volume_id,
-                name=NAME_METAVISOR_LOG_SNAPSHOT,
-                description=description
-            )
-            wait_for_snapshots(aws_svc, snap_root.id, snap_log.id)
-            dev_root = EBSBlockDeviceType(volume_type='gp2',
-                        snapshot_id=snap_root.id,
-                        delete_on_termination=True)
-            dev_log = EBSBlockDeviceType(volume_type='gp2',
-                        snapshot_id=snap_log.id,
-                        delete_on_termination=True)
-            guest_bdm['/dev/sda2'] = dev_root
-            guest_bdm['/dev/sda3'] = dev_log
-            # Use updater as base instance for create_image
-            boot_snap_name = NAME_METAVISOR_GRUB_SNAPSHOT
-            root_device_name = updater.root_device_name
-            guest_root = '/dev/sda5'
-            d_list.append(guest_root)
-        else:
-            # Use guest_instance as base instance for create_image
-            boot_snap_name = NAME_METAVISOR_ROOT_SNAPSHOT
-            root_device_name = guest_image.root_device_name
-            guest_root = '/dev/sdf'
-            d_list.append(guest_root)
+        # Use guest_instance as base instance for create_image
+        boot_snap_name = NAME_METAVISOR_ROOT_SNAPSHOT
+        root_device_name = guest_image.root_device_name
+        guest_root = '/dev/sdf'
+        d_list.append(guest_root)
 
         # Preserve volume type for any additional attached volumes
         for d in guest_bdm.keys():

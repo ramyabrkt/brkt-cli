@@ -98,16 +98,12 @@ DESCRIPTION_ORIGINAL_SNAPSHOT = \
     'Original unencrypted root volume from %(image_id)s'
 NAME_ENCRYPTED_ROOT_SNAPSHOT = 'Bracket encrypted root volume'
 NAME_METAVISOR_ROOT_SNAPSHOT = 'Bracket system root'
-NAME_METAVISOR_GRUB_SNAPSHOT = 'Bracket system GRUB'
-NAME_METAVISOR_LOG_SNAPSHOT = 'Bracket system log'
 DESCRIPTION_SNAPSHOT = 'Based on %(image_id)s'
 
 # Volume names.
 NAME_ORIGINAL_VOLUME = 'Original unencrypted root volume from %(image_id)s'
 NAME_ENCRYPTED_ROOT_VOLUME = 'Bracket encrypted root volume'
 NAME_METAVISOR_ROOT_VOLUME = 'Bracket system root'
-NAME_METAVISOR_GRUB_VOLUME = 'Bracket system GRUB'
-NAME_METAVISOR_LOG_VOLUME = 'Bracket system log'
 
 # Tag names.
 TAG_ENCRYPTOR = 'BrktEncryptor'
@@ -337,9 +333,6 @@ def _run_encryptor_instance(
     if instance_config is None:
         instance_config = InstanceConfig()
 
-    image = aws_svc.get_image(encryptor_image_id)
-    virtualization_type = image.virtualization_type
-
     # Use gp2 for fast burst I/O copying root drive
     guest_unencrypted_root = EBSBlockDeviceType(
         volume_type='gp2',
@@ -354,16 +347,12 @@ def _run_encryptor_instance(
         delete_on_termination=True)
     guest_encrypted_root.size = 2 * root_size + 1
 
-    if virtualization_type == 'paravirtual':
-        bdm['/dev/sda4'] = guest_unencrypted_root
-        bdm['/dev/sda5'] = guest_encrypted_root
-    else:
-        # Use 'sd' names even though AWS maps these to 'xvd'
-        # The AWS GUI only exposes 'sd' names, and won't allow
-        # the user to attach to an existing 'sd' name in use, but
-        # would allow conflicts if we used 'xvd' names here.
-        bdm['/dev/sdf'] = guest_unencrypted_root
-        bdm['/dev/sdg'] = guest_encrypted_root
+    # Use 'sd' names even though AWS maps these to 'xvd'
+    # The AWS GUI only exposes 'sd' names, and won't allow
+    # the user to attach to an existing 'sd' name in use, but
+    # would allow conflicts if we used 'xvd' names here.
+    bdm['/dev/sdf'] = guest_unencrypted_root
+    bdm['/dev/sdg'] = guest_encrypted_root
 
     # If security groups were not specified, create a temporary security
     # group that allows us to poll the metavisor for encryption progress.
@@ -410,20 +399,10 @@ def _run_encryptor_instance(
 
         # Tag volumes.
         bdm = instance.block_device_mapping
-        if virtualization_type == 'paravirtual':
-            aws_svc.create_tags(
-                bdm['/dev/sda5'].volume_id, name=NAME_ENCRYPTED_ROOT_VOLUME)
-            aws_svc.create_tags(
-                bdm['/dev/sda2'].volume_id, name=NAME_METAVISOR_ROOT_VOLUME)
-            aws_svc.create_tags(
-                bdm['/dev/sda1'].volume_id, name=NAME_METAVISOR_GRUB_VOLUME)
-            aws_svc.create_tags(
-                bdm['/dev/sda3'].volume_id, name=NAME_METAVISOR_LOG_VOLUME)
-        else:
-            aws_svc.create_tags(
-                bdm['/dev/sda1'].volume_id, name=NAME_METAVISOR_ROOT_VOLUME)
-            aws_svc.create_tags(
-                bdm['/dev/sdg'].volume_id, name=NAME_ENCRYPTED_ROOT_VOLUME)
+        aws_svc.create_tags(
+            bdm['/dev/sda1'].volume_id, name=NAME_METAVISOR_ROOT_VOLUME)
+        aws_svc.create_tags(
+            bdm['/dev/sdg'].volume_id, name=NAME_ENCRYPTED_ROOT_VOLUME)
     except:
         cleanup_instance_ids = []
         cleanup_sg_ids = []
@@ -655,17 +634,9 @@ def snapshot_log_volume(aws_svc, instance_id):
     instance = aws_svc.get_instance(instance_id)
     bdm = instance.block_device_mapping
 
-    image = aws_svc.get_image(instance.image_id)
-    if image.virtualization_type == 'paravirtual':
-        log_vol = bdm["/dev/sda3"]
-    elif image.virtualization_type == 'hvm':
-        log_vol = bdm["/dev/sda1"]
-    else:
-        raise Exception('Unknown virtualization type %s' %
-                        image.virtualization_type)
-
+    log_vol = bdm["/dev/sda1"]
     vol = aws_svc.get_volume(log_vol.volume_id)
-
+    image = aws_svc.get_image(instance.image_id)
     snapshot = aws_svc.create_snapshot(
         vol.id,
         name=NAME_LOG_SNAPSHOT % {'instance_id': instance_id},
@@ -750,64 +721,24 @@ def snapshot_encrypted_instance(aws_svc, enc_svc_cls, encryptor_instance,
         vol_type = 'gp2'
 
     # Snapshot volumes.
-    if encryptor_image.virtualization_type == 'paravirtual':
-        snap_guest = aws_svc.create_snapshot(
-            encryptor_bdm['/dev/sda5'].volume_id,
-            name=NAME_ENCRYPTED_ROOT_SNAPSHOT,
-            description=description
-        )
-        snap_bsd = aws_svc.create_snapshot(
-            encryptor_bdm['/dev/sda2'].volume_id,
-            name=NAME_METAVISOR_ROOT_SNAPSHOT,
-            description=description
-        )
-        snap_log = aws_svc.create_snapshot(
-            encryptor_bdm['/dev/sda3'].volume_id,
-            name=NAME_METAVISOR_LOG_SNAPSHOT,
-            description=description
-        )
-        log.info(
-            'Creating snapshots for the new encrypted AMI: %s, %s, %s',
-            snap_guest.id, snap_bsd.id, snap_log.id)
-
-        wait_for_snapshots(
-            aws_svc, snap_guest.id, snap_bsd.id, snap_log.id)
-
-        if vol_type is None:
-            vol_type = "gp2"
-        dev_guest_root = EBSBlockDeviceType(volume_type=vol_type,
-                                    snapshot_id=snap_guest.id,
-                                    iops=iops,
-                                    delete_on_termination=True)
-        mv_root_id = encryptor_bdm['/dev/sda1'].volume_id
-
-        dev_mv_root = EBSBlockDeviceType(volume_type='gp2',
-                                  snapshot_id=snap_bsd.id,
-                                  delete_on_termination=True)
-        dev_log = EBSBlockDeviceType(volume_type='gp2',
-                                 snapshot_id=snap_log.id,
-                                 delete_on_termination=True)
-        new_bdm['/dev/sda2'] = dev_mv_root
-        new_bdm['/dev/sda3'] = dev_log
-        new_bdm['/dev/sda5'] = dev_guest_root
-    else:
-        # HVM instance type
-        snap_guest = aws_svc.create_snapshot(
-            encryptor_bdm['/dev/sdg'].volume_id,
-            name=NAME_ENCRYPTED_ROOT_SNAPSHOT,
-            description=description
-        )
-        log.info(
-            'Creating snapshots for the new encrypted AMI: %s' % (
-                    snap_guest.id)
-        )
-        wait_for_snapshots(aws_svc, snap_guest.id)
-        dev_guest_root = EBSBlockDeviceType(volume_type=vol_type,
-                                    snapshot_id=snap_guest.id,
-                                    iops=iops,
-                                    delete_on_termination=True)
-        mv_root_id = encryptor_bdm['/dev/sda1'].volume_id
-        new_bdm['/dev/sdf'] = dev_guest_root
+    snap_guest = aws_svc.create_snapshot(
+        encryptor_bdm['/dev/sdg'].volume_id,
+        name=NAME_ENCRYPTED_ROOT_SNAPSHOT,
+        description=description
+    )
+    log.info(
+        'Creating snapshots for the new encrypted AMI: %s' % (
+                snap_guest.id)
+    )
+    wait_for_snapshots(aws_svc, snap_guest.id)
+    dev_guest_root = EBSBlockDeviceType(
+        volume_type=vol_type,
+        snapshot_id=snap_guest.id,
+        iops=iops,
+        delete_on_termination=True
+    )
+    mv_root_id = encryptor_bdm['/dev/sda1'].volume_id
+    new_bdm['/dev/sdf'] = dev_guest_root
 
     if not legacy:
         log.info("Detaching new guest root %s" % (mv_root_id,))
@@ -940,10 +871,7 @@ def register_ami(aws_svc, encryptor_instance, encryptor_image, name,
     log.info('Registered AMI %s based on the snapshots.', ami)
     wait_for_image(aws_svc, ami)
     image = aws_svc.get_image(ami, retry=True)
-    if encryptor_image.virtualization_type == 'paravirtual':
-        name = NAME_METAVISOR_GRUB_SNAPSHOT
-    else:
-        name = NAME_METAVISOR_ROOT_SNAPSHOT
+    name = NAME_METAVISOR_ROOT_SNAPSHOT
     snap = image.block_device_mapping[image.root_device_name]
     aws_svc.create_tags(
         snap.snapshot_id,
@@ -991,17 +919,12 @@ def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami,
     # and a HVM guest (legacy)
     log.debug('Guest type: %s Encryptor type: %s',
         guest_image.virtualization_type, mv_image.virtualization_type)
-    if (mv_image.virtualization_type == 'hvm' and
-        guest_image.virtualization_type == 'paravirtual'):
-            raise BracketError(
-                    "Encryptor/Guest virtualization type mismatch")
+    if guest_image.virtualization_type != 'hvm':
+        raise BracketError(
+            'Unsupported virtualization type: %s' %
+            guest_image.virtualization_type
+        )
     legacy = False
-    if (mv_image.virtualization_type == 'paravirtual' and
-        guest_image.virtualization_type == 'hvm'):
-            # This will go away when HVM MV GA's
-            log.warn("Must specify a paravirtual AMI type in order to "
-                     "preserve guest OS license information")
-            legacy = True
     root_device_name = guest_image.root_device_name
     if not guest_image.block_device_mapping.get(root_device_name):
             log.warn("AMI must have root_device_name in block_device_mapping "
