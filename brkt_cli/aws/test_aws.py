@@ -123,7 +123,7 @@ class TestValidation(unittest.TestCase):
         bdm = BlockDeviceMapping()
         bdm['/dev/sda1'] = BlockDeviceType()
         id = aws_svc.register_image(
-            kernel_id=None, name='Guest image', block_device_map=bdm)
+            name='Guest image', block_device_map=bdm)
         guest_image = aws_svc.get_image(id)
 
         # Make the guest image look like it was already encrypted and
