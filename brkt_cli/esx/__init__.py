@@ -17,6 +17,8 @@ import os
 import subprocess
 import getpass
 
+from brkt_cli import _parse_proxies
+
 from brkt_cli.subcommand import Subcommand
 
 from brkt_cli import (
@@ -102,6 +104,11 @@ def run_encrypt(values, parsed_config, log, use_esx=False):
         _, brkt_env = parsed_config.get_current_env()
     if not values.token:
         raise ValidationError('Must provide a token')
+
+    proxies = None
+    if values.http_proxy:
+        proxies = _parse_proxies(values.http_proxy)
+
     # Download images from S3
     try:
         if (values.encryptor_vmdk is None and
@@ -109,7 +116,8 @@ def run_encrypt(values, parsed_config, log, use_esx=False):
             (ovf, file_list) = \
                 esx_service.download_ovf_from_s3(
                     values.bucket_name,
-                    image_name=values.image_name
+                    image_name=values.image_name,
+                    proxy=proxies[0]
                 )
             if ovf is None:
                 raise ValidationError("Did not find MV OVF images")
@@ -267,6 +275,9 @@ def run_update(values, parsed_config, log, use_esx=False):
     if not values.token:
         raise ValidationError('Must provide a token')
 
+    proxies = None
+    if values.http_proxy:
+        proxies = _parse_proxies(values.http_proxy)
     # Download images from S3
     try:
         if (values.encryptor_vmdk is None and
@@ -274,7 +285,8 @@ def run_update(values, parsed_config, log, use_esx=False):
             (ovf_name, download_file_list) = \
                 esx_service.download_ovf_from_s3(
                     values.bucket_name,
-                    image_name=values.image_name
+                    image_name=values.image_name,
+                    proxy=proxies[0]
                 )
             if ovf_name is None:
                 raise ValidationError("Did not find MV OVF images")

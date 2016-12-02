@@ -920,7 +920,7 @@ def initialize_vcenter(host, user, password, port,
     return vc_swc
 
 
-def download_ovf_from_s3(bucket_name, image_name=None):
+def download_ovf_from_s3(bucket_name, image_name=None, proxy=None):
     logging.getLogger('boto').setLevel(logging.FATAL)
     log.info("Fetching Metavisor OVF from S3")
     if bucket_name is None:
@@ -930,7 +930,12 @@ def download_ovf_from_s3(bucket_name, image_name=None):
     download_file_list = []
     try:
         anon = not (set(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']) <= set(os.environ))
-        conn = boto.connect_s3(None, None, anon=anon, host="s3.amazonaws.com")
+        if proxy:
+            conn = boto.connect_s3(None, None, anon=anon,
+                                   host="s3.amazonaws.com",
+                                   proxy=proxy.host, proxy_port=proxy.port)
+        else:
+            conn = boto.connect_s3(None, None, anon=anon, host="s3.amazonaws.com")
         bucket = boto.s3.bucket.Bucket(connection=conn, name=bucket_name)
         if (image_name is None):
             # Get the last one
