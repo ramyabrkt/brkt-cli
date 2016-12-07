@@ -117,7 +117,7 @@ def run_encrypt(values, parsed_config, log, use_esx=False):
                 esx_service.download_ovf_from_s3(
                     values.bucket_name,
                     image_name=values.image_name,
-                    proxy=proxies[0]
+                    proxy=proxies[0] if proxies else None
                 )
             if ovf is None:
                 raise ValidationError("Did not find MV OVF images")
