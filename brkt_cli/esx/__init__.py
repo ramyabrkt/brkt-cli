@@ -105,9 +105,9 @@ def run_encrypt(values, parsed_config, log, use_esx=False):
     if not values.token:
         raise ValidationError('Must provide a token')
 
-    proxies = None
+    proxy = None
     if values.http_proxy:
-        proxies = _parse_proxies(values.http_proxy)
+        proxy = _parse_proxies(values.http_proxy)[0]
 
     # Download images from S3
     try:
@@ -117,7 +117,7 @@ def run_encrypt(values, parsed_config, log, use_esx=False):
                 esx_service.download_ovf_from_s3(
                     values.bucket_name,
                     image_name=values.image_name,
-                    proxy=proxies[0] if proxies else None
+                    proxy=proxy
                 )
             if ovf is None:
                 raise ValidationError("Did not find MV OVF images")
@@ -275,9 +275,9 @@ def run_update(values, parsed_config, log, use_esx=False):
     if not values.token:
         raise ValidationError('Must provide a token')
 
-    proxies = None
+    proxy = None
     if values.http_proxy:
-        proxies = _parse_proxies(values.http_proxy)
+        proxy = _parse_proxies(values.http_proxy)[0]
     # Download images from S3
     try:
         if (values.encryptor_vmdk is None and
@@ -286,7 +286,7 @@ def run_update(values, parsed_config, log, use_esx=False):
                 esx_service.download_ovf_from_s3(
                     values.bucket_name,
                     image_name=values.image_name,
-                    proxy=proxies[0]
+                    proxy=proxy
                 )
             if ovf_name is None:
                 raise ValidationError("Did not find MV OVF images")
