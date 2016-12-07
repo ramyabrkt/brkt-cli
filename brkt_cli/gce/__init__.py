@@ -113,6 +113,8 @@ def run_update(values, config):
 
 def run_launch(values, config):
     gce_svc = gce_service.GCEService(values.project, None, log)
+    if values.ssd_scratch_disks > 8:
+        raise ValidationError("Maximum of 8 SSD scratch disks are supported")
     instance_config = instance_config_from_values(
         values, mode=INSTANCE_METAVISOR_MODE, cli_config=config)
     if values.startup_script:
@@ -140,7 +142,8 @@ def run_launch(values, config):
                             values.instance_type,
                             values.network,
                             values.subnetwork,
-                            metadata)
+                            metadata,
+                            values.ssd_scratch_disks)
     print(encrypted_instance_id)
     return 0
 
