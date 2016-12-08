@@ -439,6 +439,9 @@ class SortingHelpFormatter(argparse.HelpFormatter):
         return help
 
 
+def is_verbose(values, subcommand):
+    return values.verbose or subcommand.verbose(values)
+
 def main():
     parser = argparse.ArgumentParser(
         description='Command-line interface to the Bracket Computing service.',
@@ -542,9 +545,7 @@ def main():
     # the top-level "brkt" command or one of the subcommands.  We support
     # both because users got confused when "brkt encrypt-ami -v" didn't work.
     log_level = logging.INFO
-    verbose = values.verbose
-    if subcommand.verbose(values):
-        verbose = True
+    verbose = is_verbose(values, subcommand)
     subcommand.init_logging(verbose)
     if verbose:
         log_level = logging.DEBUG
