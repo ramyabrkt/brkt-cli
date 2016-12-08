@@ -609,9 +609,10 @@ def main():
         log.error('Interrupted by user')
     finally:
         if debug_handler:
+            logging.root.removeHandler(debug_handler)
+            debug_handler.close()
+
             if result != 0 and allow_debug_log:
-                debug_handler.close()
-                logging.root.removeHandler(debug_handler)
                 log.info('Debug log is available at %s', debug_log_file.name)
             else:
                 os.remove(debug_log_file.name)
