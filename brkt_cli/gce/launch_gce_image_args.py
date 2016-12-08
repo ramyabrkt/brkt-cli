@@ -68,3 +68,13 @@ def setup_launch_gce_image_args(parser):
         dest='guest_fqdn',
         help=argparse.SUPPRESS
     )
+    # Optional (number of) SSD scratch disks because these can only be attached
+    # at instance launch time, compared to the other (persistent) disks
+    parser.add_argument(
+        '--ssd-scratch-disks',
+        metavar='N',
+        type=int,
+        default=0,
+        dest='ssd_scratch_disks',
+        help='Number of SSD scratch disks to be attached (max. 8)'
+    )

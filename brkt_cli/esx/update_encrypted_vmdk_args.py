@@ -137,6 +137,15 @@ def setup_update_vmdk_args(parser):
         default=False,
         help=argparse.SUPPRESS
     )
+    # Optional HTTP Proxy argument which can be used in proxied environments
+    # Specifies the HTTP Proxy to use for S3/AWS connections
+    parser.add_argument(
+        '--http-s3-proxy',
+        dest='http_proxy',
+        metavar='DNS_NAME',
+        default=None,
+        help=argparse.SUPPRESS
+    )
     # Optional MV VMDK that's used to launch the updator instance.  This
     # argument is hidden because it's only used for development.
     parser.add_argument(

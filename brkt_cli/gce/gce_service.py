@@ -7,6 +7,7 @@ import re
 import socket
 import tempfile
 import time
+import uuid
 
 import brkt_cli.util
 from brkt_cli.util import (
@@ -447,6 +448,19 @@ class GCEService(BaseGCEService):
         self.compute.disks().insert(project=self.project,
                 zone=zone, body=body).execute()
         self.wait_for_disk(zone, name)
+
+    def create_ssd_disk(self, zone):
+        name = 'scratch-' + str(uuid.uuid4().hex)
+        base = "projects/%s/zones/%s" % (self.project, zone)
+        body = {
+            "deviceName": name,
+            "type": "SCRATCH",
+            "autoDelete": True,
+            "initializeParams": {
+                "diskType": base + "/diskTypes/local-ssd"
+            }
+        }
+        return body
 
     def create_gce_image_from_disk(self, zone, image_name, disk_name):
         build_disk = "projects/%s/zones/%s/disks/%s" % (self.project,
