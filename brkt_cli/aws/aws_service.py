@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import abc
+import logging
 import re
 import ssl
-import tempfile
 
 import boto
 import boto.sts
 import boto.vpc
-import logging
 from boto.exception import EC2ResponseError, BotoServerError
 
 from brkt_cli import util
@@ -292,13 +291,6 @@ class AWSService(BaseAWSService):
             'type=%s',
             image_id, security_group_ids, subnet_id, instance_type
         )
-        if user_data and log.isEnabledFor(logging.DEBUG):
-            with tempfile.NamedTemporaryFile(
-                prefix='user-data-',
-                delete=False
-            ) as f:
-                log.debug('Writing instance user data to %s', f.name)
-                f.write(user_data)
 
         try:
             run_instances = self.retry(self.conn.run_instances)

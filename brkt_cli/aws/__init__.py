@@ -14,6 +14,7 @@
 import json
 import logging
 import re
+import tempfile
 import urllib2
 
 import boto
@@ -186,7 +187,7 @@ def run_share_logs(values):
 
 
 @_handle_aws_errors
-def run_encrypt(values, config):
+def run_encrypt(values, config, verbose=False):
     session_id = util.make_nonce()
 
     aws_svc = aws_service.AWSService(
@@ -226,6 +227,16 @@ def run_encrypt(values, config):
         _validate(aws_svc, values, encryptor_ami)
         brkt_cli.validate_ntp_servers(values.ntp_servers)
 
+    instance_config = instance_config_from_values(
+        values, mode=INSTANCE_CREATOR_MODE, cli_config=config)
+    if verbose:
+        with tempfile.NamedTemporaryFile(
+            prefix='user-data-',
+            delete=False
+        ) as f:
+            log.debug('Writing instance user data to %s', f.name)
+            f.write(instance_config.make_userdata())
+
     encrypted_image_id = encrypt_ami.encrypt(
         aws_svc=aws_svc,
         enc_svc_cls=encryptor_service.EncryptorService,
@@ -235,8 +246,7 @@ def run_encrypt(values, config):
         subnet_id=values.subnet_id,
         security_group_ids=values.security_group_ids,
         guest_instance_type=values.guest_instance_type,
-        instance_config=instance_config_from_values(
-            values, mode=INSTANCE_CREATOR_MODE, cli_config=config),
+        instance_config=instance_config,
         status_port=values.status_port,
         save_encryptor_logs=values.save_encryptor_logs,
         terminate_encryptor_on_failure=(
@@ -249,7 +259,7 @@ def run_encrypt(values, config):
 
 
 @_handle_aws_errors
-def run_update(values, config):
+def run_update(values, config, verbose=False):
     nonce = util.make_nonce()
 
     aws_svc = aws_service.AWSService(
@@ -321,14 +331,23 @@ def run_update(values, config):
         encrypted_image.id, encryptor_ami
     )
 
+    instance_config = instance_config_from_values(
+        values, mode=INSTANCE_UPDATER_MODE, cli_config=config)
+    if verbose:
+        with tempfile.NamedTemporaryFile(
+            prefix='user-data-',
+            delete=False
+        ) as f:
+            log.debug('Writing instance user data to %s', f.name)
+            f.write(instance_config.make_userdata())
+
     updated_ami_id = update_ami(
         aws_svc, encrypted_image.id, encryptor_ami, encrypted_ami_name,
         subnet_id=values.subnet_id,
         security_group_ids=values.security_group_ids,
         guest_instance_type=values.guest_instance_type,
         updater_instance_type=values.updater_instance_type,
-        instance_config=instance_config_from_values(
-            values, mode=INSTANCE_UPDATER_MODE, cli_config=config),
+        instance_config=instance_config,
         status_port=values.status_port,
     )
     print(updated_ami_id)
@@ -415,9 +434,11 @@ class AWSSubcommand(Subcommand):
 
     def run(self, values):
         if values.aws_subcommand == 'encrypt':
-            return run_encrypt(values, self.config)
+            verbose = brkt_cli.is_verbose(values, self)
+            return run_encrypt(values, self.config, verbose=verbose)
         if values.aws_subcommand == 'update':
-            return run_update(values, self.config)
+            verbose = brkt_cli.is_verbose(values, self)
+            return run_update(values, self.config, verbose=verbose)
         if values.aws_subcommand == 'diag':
             return run_diag(values)
         if values.aws_subcommand == 'share-logs':
@@ -521,7 +542,8 @@ class EncryptAMISubcommand(Subcommand):
             'This command syntax has been deprecated.  Please use '
             'brkt aws encrypt instead.'
         )
-        return run_encrypt(values, self.config)
+        verbose = brkt_cli.is_verbose(values, self)
+        return run_encrypt(values, self.config, verbose=verbose)
 
     def exposed(self):
         return False
@@ -567,7 +589,8 @@ class UpdateAMISubcommand(Subcommand):
             'This command syntax has been deprecated.  Please use brkt aws '
             'update instead.'
         )
-        return run_update(values, self.config)
+        verbose = brkt_cli.is_verbose(values, self)
+        return run_update(values, self.config, verbose=verbose)
 
 
 def get_subcommands():
