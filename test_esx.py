@@ -57,7 +57,8 @@ class DummyVCenterService(esx_service.BaseVCenterService):
         self.connection = False
         super(DummyVCenterService, self).__init__(
             'testhost', 'testuser', 'testpass', 'testport', 'testdcname',
-            'testdsname', False, 'testclustername', 1, 1024, 123)
+            'testdsname', False, 'testclustername', 1, 1024, 123,
+            'VM Network', 'Port')
 
     def connect(self):
         self.connection = True
@@ -93,7 +94,7 @@ class DummyVCenterService(esx_service.BaseVCenterService):
     def get_ip_address(self, vm):
         return ("10.10.10.1")
 
-    def create_vm(self, memoryGB=1, numCPUs=1, network_name="VM Network"):
+    def create_vm(self, memoryGB=1, numCPUs=1):
         timestamp = datetime.datetime.utcnow().isoformat() + 'Z'
         vm_name = "VM-" + timestamp
         vm = DummyVM(vm_name, numCPUs, memoryGB)
