@@ -55,6 +55,13 @@ def setup_encrypt_vmdk_args(parser):
         default=None,
         required=False)
     parser.add_argument(
+        "--vcenter-network-name",
+        help="vCenter network name to use",
+        dest="network_name",
+        metavar='NAME',
+        default="VM Network",
+        required=False)
+    parser.add_argument(
         "--cpu-count",
         help="Number of CPUs to assign to Encryptor VM",
         metavar='N',
@@ -207,4 +214,13 @@ def setup_encrypt_vmdk_args(parser):
         dest='bucket_name',
         help=argparse.SUPPRESS,
         default="solo-brkt-prod-ovf-image"
+    )
+    # Optional nic-type to be used with VDS
+    # Values can be Port, VirtualPort or VirtualPortGroup
+    parser.add_argument(
+        '--nic-type',
+        metavar='NAME',
+        dest='nic_type',
+        help=argparse.SUPPRESS,
+        default="Port"
     )

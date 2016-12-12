@@ -137,6 +137,8 @@ def run_encrypt(values, parsed_config, log, use_esx=False):
             no_of_cpus=values.no_of_cpus,
             memory_gb=values.memory_gb,
             session_id=session_id,
+            network_name=values.network_name,
+            nic_type=values.nic_type,
             verify=False if use_esx else values.validate,
         )
     except Exception as e:
@@ -306,6 +308,8 @@ def run_update(values, parsed_config, log, use_esx=False):
             no_of_cpus=values.no_of_cpus,
             memory_gb=values.memory_gb,
             session_id=session_id,
+            network_name=values.network_name,
+            nic_type=values.nic_type,
             verify=False if use_esx else values.validate,
         )
     except Exception as e:
@@ -387,6 +391,8 @@ def run_rescue_metavisor(values, parsed_config, log):
             no_of_cpus=None,
             memory_gb=None,
             session_id=session_id,
+            network_name=None,
+            nic_type=None,
             verify=values.validate,
         )
     except Exception as e:
