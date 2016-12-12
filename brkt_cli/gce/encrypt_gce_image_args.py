@@ -27,13 +27,6 @@ def setup_encrypt_gce_image_args(parser, parsed_config):
         **zone_kwargs
     )
     parser.add_argument(
-        '--encryptor-image-bucket',
-        help='Bucket to retrieve encryptor image from (prod, stage, shared, <custom>)',
-        dest='bucket',
-        default='prod',
-        required=False
-    )
-    parser.add_argument(
         '--no-validate',
         dest='validate',
         action='store_false',
@@ -82,6 +75,15 @@ def setup_encrypt_gce_image_args(parser, parsed_config):
         dest='image_file',
         required=False,
         help=argparse.SUPPRESS
+    )
+    # Optional bucket name to retrieve the encryptor image from
+    # (prod, stage, shared, <custom>) 
+    parser.add_argument(
+        '--encryptor-image-bucket',
+        help=argparse.SUPPRESS,
+        dest='bucket',
+        default='prod',
+        required=False
     )
     parser.add_argument(
         '--no-cleanup',
