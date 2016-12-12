@@ -22,13 +22,6 @@ def setup_update_gce_image_args(parser, parsed_config):
         default=required_zone,
         required=not bool(required_zone)
     )
-    parser.add_argument(
-        '--encryptor-image-bucket',
-        help='Bucket to retrieve encryptor image from (prod, stage, shared, <custom>)',
-        dest='bucket',
-        default='prod',
-        required=False
-    )
     required_project = parsed_config.get_option('gce.project', None)
     parser.add_argument(
         '--project',
@@ -68,6 +61,15 @@ def setup_update_gce_image_args(parser, parsed_config):
         dest='image_file',
         required=False,
         help=argparse.SUPPRESS
+    )
+    # Optional bucket name to retrieve the encryptor image from
+    # (prod, stage, shared, <custom>)
+    parser.add_argument(
+        '--encryptor-image-bucket',
+        help=argparse.SUPPRESS,
+        dest='bucket',
+        default='prod',
+        required=False
     )
     parser.add_argument(
         '--no-cleanup',
