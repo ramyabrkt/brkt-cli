@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import print_function
 
+import argparse
 import json
 import logging
 import re
@@ -47,7 +48,17 @@ class MakeTokenSubcommand(Subcommand):
         return values.make_jwt_verbose
 
     def run(self, values):
-        crypto = util.read_private_key(values.signing_key)
+        if values.signing_key_option:
+            log.warn(
+                'The --signing-key option is deprecated and will be removed '
+                'in a future release.'
+            )
+
+        signing_key = values.signing_key or values.signing_key_option
+        if not signing_key:
+            raise ValidationError('Signing key path was not specified')
+
+        crypto = util.read_private_key(signing_key)
         exp = None
         if values.exp:
             exp = parse_timestamp(values.exp)
@@ -213,10 +224,22 @@ def setup_make_jwt_args(subparsers):
             'Generate a JSON Web Token for encrypting an instance or '
             'launching an encrypted instance. A timestamp can be either a '
             'Unix timestamp in seconds or ISO 8601 (2016-05-10T19:15:36Z). '
-            'Timezone offset defaults to UTC if not specified.'
-        ),
-        help='Generate a JSON Web Token for encrypting or launching an instance',
+            'Timezone offset defaults to UTC if not specified.'),
+        help=(
+            'Generate a JSON Web Token for encrypting or launching an '
+            'instance'),
         formatter_class=brkt_cli.SortingHelpFormatter
+    )
+
+    # TODO: Make this a required argument when we remove the --signing-key
+    # option.
+    parser.add_argument(
+        'signing_key',
+        metavar='SIGNING-KEY-PATH',
+        nargs='?',
+        help=(
+            'The private key that is used to sign the JWT. The key must be a '
+            '384-bit ECDSA private key (NIST P-384) in PEM format.')
     )
     parser.add_argument(
         '--claim',
@@ -247,17 +270,18 @@ def setup_make_jwt_args(subparsers):
         help='Token is not valid before this time'
     )
     parser.add_argument(
-        '--signing-key',
-        metavar='PATH',
-        help=(
-            'The private key that is used to sign the JWT. The key must be a '
-            '384-bit ECDSA private key (NIST P-384) in PEM format.'),
-        required=True
-    )
-    parser.add_argument(
         '-v',
         '--verbose',
         dest='make_jwt_verbose',
         action='store_true',
         help='Print status information to the console'
+    )
+
+    # The signing key is now passed as a positional argument.  This option
+    # is deprecated and will be removed in a future release.
+    parser.add_argument(
+        '--signing-key',
+        dest='signing_key_option',
+        metavar='PATH',
+        help=argparse.SUPPRESS
     )
