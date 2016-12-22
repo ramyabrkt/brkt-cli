@@ -540,7 +540,7 @@ class GCEService(BaseGCEService):
                      network='default',
                      disks=[],
                      metadata={},
-                     delete_boot=False,
+                     delete_boot=True,
                      block_project_ssh_keys=False,
                      instance_type='n1-standard-4',
                      image_project=None,

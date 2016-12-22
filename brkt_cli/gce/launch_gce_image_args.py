@@ -28,10 +28,11 @@ def setup_launch_gce_image_args(parser):
         default='us-central1-a'
     )
     parser.add_argument(
-        '--delete-boot',
-        help='Delete boot disk when instance is deleted',
+        '--no-delete-boot',
+        help='Do not delete boot disk when instance is deleted',
         dest='delete_boot',
-        action='store_true'
+        default=True,
+        action='store_false'
     )
     parser.add_argument(
         '--project',
