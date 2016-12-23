@@ -106,8 +106,8 @@ def create_image(gce_svc, zone, encrypted_image_disk, encrypted_image_name, encr
         gce_svc.wait_image(encrypted_image_name)
         gce_svc.wait_snapshot(encrypted_image_name)
         log.info("Image %s successfully created!", encrypted_image_name)
-    except Exception as e:
-        log.info('Image creation failed: ', e)
+    except:
+        log.info('Image creation failed.')
         raise
 
 
