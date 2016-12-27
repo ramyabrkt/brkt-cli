@@ -71,6 +71,7 @@ def do_encryption(gce_svc,
                          disks=[gce_svc.get_disk(zone, instance_name),
                                 gce_svc.get_disk(zone, encrypted_image_disk),
                                 gce_svc.get_disk(zone, dummy_name)],
+                         delete_boot=False,
                          metadata=metadata)
 
     try:

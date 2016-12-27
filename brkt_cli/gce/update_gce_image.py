@@ -70,6 +70,7 @@ def update_gce_image(gce_svc, enc_svc_cls, image_id, encryptor_image,
                              network=network,
                              subnet=subnetwork,
                              disks=[],
+                             delete_boot=False,
                              metadata=user_data)
         ip = gce_svc.get_instance_ip(updater, zone)
         updater_launched = True
@@ -89,6 +90,7 @@ def update_gce_image(gce_svc, enc_svc_cls, image_id, encryptor_image,
         # delete updater instance
         log.info('Deleting updater instance')
         gce_svc.delete_instance(zone, updater)
+        updater_launched = False
 
         # wait for updater root disk
         gce_svc.wait_for_detach(zone, updater)
