@@ -133,7 +133,6 @@ def setup_instance_config_args(parser, parsed_config,
         required=False
     )
 
-
 def instance_config_from_values(values=None, mode=INSTANCE_CREATOR_MODE,
                                 cli_config=None):
     """ Return an InstanceConfig object, based on options specified on
@@ -175,6 +174,15 @@ def instance_config_from_values(values=None, mode=INSTANCE_CREATOR_MODE,
 
     if values.ntp_servers:
         brkt_config['ntp_servers'] = values.ntp_servers
+
+    if values and 'crypto' in values and values.crypto is not None:
+         crypto_policy = values.crypto
+         if crypto_policy != 'gcm' or crypto_policy != 'xts':
+              raise ValidationError(
+                  '--crypto can only accept xts or gcm'
+              )
+         else:
+              brkt_config['crypto'] = values.crypto
 
     log.debug('Parsed brkt_config %s', brkt_config)
 

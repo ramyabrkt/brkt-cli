@@ -99,3 +99,10 @@ def setup_encrypt_gce_image_args(parser, parsed_config):
         action='store_true',
         help=argparse.SUPPRESS
     )
+    parser.add_argument(
+        '--crypto',
+        dest='crypto',
+        required=False,
+        default='gcm',
+        help=argparse.SUPPRESS
+    )

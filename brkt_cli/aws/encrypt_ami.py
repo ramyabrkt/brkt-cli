@@ -323,7 +323,13 @@ def create_encryptor_security_group(aws_svc, vpc_id=None, status_port=\
     return sg
 
 
-def _run_encryptor_instance(
+def _get_encrypted_guest_disk_size(guest_size, crypto_policy='gcm'):
+    if crypto_policy is not None and crypto_policy.lower() == "xts":
+         return guest_size + 1
+    else:
+         return guest_size * 2 + 1
+
+def _run_encryptor_instance(crypto_policy,
         aws_svc, encryptor_image_id, snapshot, root_size, guest_image_id,
         security_group_ids=None, subnet_id=None, zone=None,
         instance_config=None,
@@ -345,7 +351,7 @@ def _run_encryptor_instance(
     guest_encrypted_root = EBSBlockDeviceType(
         volume_type='gp2',
         delete_on_termination=True)
-    guest_encrypted_root.size = 2 * root_size + 1
+    guest_encrypted_root.size = _get_encrypted_guest_disk_size(root_size, crypto_policy)
 
     # Use 'sd' names even though AWS maps these to 'xvd'
     # The AWS GUI only exposes 'sd' names, and won't allow
@@ -898,7 +904,7 @@ def register_ami(aws_svc, encryptor_instance, encryptor_image, name,
     return ami_info
 
 
-def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami,
+def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami, crypto_policy='gcm',
             encrypted_ami_name=None, subnet_id=None, security_group_ids=None,
             guest_instance_type='m3.medium', instance_config=None,
             save_encryptor_logs=True,
@@ -954,6 +960,7 @@ def encrypt(aws_svc, enc_svc_cls, image_id, encryptor_ami,
                 legacy = True
 
         encryptor_instance, temp_sg_id = _run_encryptor_instance(
+            crypto_policy,
             aws_svc=aws_svc,
             encryptor_image_id=encryptor_ami,
             snapshot=snapshot_id,
