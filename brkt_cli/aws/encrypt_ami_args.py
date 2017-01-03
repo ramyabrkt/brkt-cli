@@ -127,6 +127,12 @@ def setup_encrypt_ami_args(parser):
         default=False
     )
 
+    parser.add_argument(
+        '--crypto',
+        dest='crypto',
+        required=False
+    )
+
     # Optional argument for development: if encryption fails, keep the
     # encryptor running so that we can debug it.
     parser.add_argument(

@@ -32,6 +32,13 @@ def run_encrypt(values, config):
     gce_svc = gce_service.GCEService(values.project, session_id, log)
     check_args(values, gce_svc, config)
 
+    instance_config = instance_config_from_values(
+            values, mode=INSTANCE_CREATOR_MODE, cli_config=config)
+    if instance_config.brkt_config and 'crypto' in instance_config.brkt_config:
+	crypto_policy = values.crypto
+    else:
+	crypto_policy = 'GCM'
+
     encrypted_image_name = gce_service.get_image_name(
         values.encrypted_image_name, values.image)
     gce_service.validate_image_name(encrypted_image_name)
@@ -45,6 +52,9 @@ def run_encrypt(values, config):
         logging.getLogger('googleapiclient').setLevel(logging.ERROR)
 
     log.info('Starting encryptor session %s', gce_svc.get_session_id())
+
+    if crypto_policy is None:
+	crypto_policy = 'GCM'
 
     encrypted_image_id = encrypt_gce_image.encrypt(
         gce_svc=gce_svc,
@@ -62,8 +72,10 @@ def run_encrypt(values, config):
         network=values.network,
         subnetwork=values.subnetwork,
         status_port=values.status_port,
-        cleanup=values.cleanup
+        cleanup=values.cleanup,
+        crypto_policy=crypto_policy
     )
+
     # Print the image name to stdout, in case the caller wants to process
     # the output.  Log messages go to stderr.
     print(encrypted_image_id)
@@ -243,6 +255,9 @@ class EncryptGCEImageSubcommand(Subcommand):
         config.register_option(
             '%s.zone' % (self.name(),),
             'The GCE zone metavisors will be launched into')
+        config.register_option(
+            '%s.crypto' % (self.name(),),
+            'The GCE crypto metavisors will be launched into')
 
 
     def register(self, subparsers, parsed_config):
@@ -273,7 +288,13 @@ class EncryptGCEImageSubcommand(Subcommand):
         if zone:
             parsed_config.set_option('gce.zone', zone)
             parsed_config.unset_option('%s.zone' % (self.name(),))
-        if project or network or subnetwork or zone:
+
+        crypto = parsed_config.get_option('%s.crypto' % (self.name(),))
+        if crypto:
+            parsed_config.set_option('gce.crypto', crypto)
+            parsed_config.unset_option('%s.crypto' % (self.name(),))
+
+        if project or network or subnetwork or zone or crypto:
             parsed_config.save_config()
 
         encrypt_gce_image_args.setup_encrypt_gce_image_args(
