@@ -204,6 +204,11 @@ def run_encrypt(values, config, verbose=False):
         brkt_cli.get_prod_brkt_env()
     )
 
+    if values is not None and values.crypto:
+        crypto_policy = values.crypto
+    else:
+        crypto_policy = 'gcm'
+
     if values.validate:
         # Validate the region before connecting.
         _validate_region(aws_svc, values.region)
@@ -242,6 +247,7 @@ def run_encrypt(values, config, verbose=False):
         enc_svc_cls=encryptor_service.EncryptorService,
         image_id=guest_image.id,
         encryptor_ami=encryptor_ami,
+        crypto_policy=crypto_policy,
         encrypted_ami_name=values.encrypted_ami_name,
         subnet_id=values.subnet_id,
         security_group_ids=values.security_group_ids,
