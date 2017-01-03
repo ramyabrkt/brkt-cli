@@ -34,7 +34,8 @@ def run_encrypt(values, config):
 
     instance_config = instance_config_from_values(
             values, mode=INSTANCE_CREATOR_MODE, cli_config=config)
-    if instance_config.brkt_config and 'crypto' in instance_config.brkt_config:
+    if instance_config.brkt_config and
+       'crypto_policy_type' in instance_config.brkt_config:
 	crypto_policy = values.crypto
     else:
 	crypto_policy = 'gcm'

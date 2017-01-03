@@ -177,12 +177,12 @@ def instance_config_from_values(values=None, mode=INSTANCE_CREATOR_MODE,
 
     if values and 'crypto' in values and values.crypto is not None:
          crypto_policy = values.crypto
-         if crypto_policy != 'gcm' or crypto_policy != 'xts':
+         if crypto_policy != 'gcm' and crypto_policy != 'xts':
               raise ValidationError(
                   '--crypto can only accept xts or gcm'
               )
          else:
-              brkt_config['crypto'] = values.crypto
+              brkt_config['crypto_policy_type'] = values.crypto
 
     log.debug('Parsed brkt_config %s', brkt_config)
 
