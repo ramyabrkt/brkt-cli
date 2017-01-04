@@ -180,3 +180,12 @@ def setup_update_with_esx_host_args(parser):
         help=argparse.SUPPRESS,
         default="Port"
     )
+    # Optional HTTP Proxy argument which can be used in proxied environments
+    # Specifies the HTTP Proxy to use for S3/AWS connections
+    parser.add_argument(
+        '--http-s3-proxy',
+        dest='http_proxy',
+        metavar='HOST:PORT',
+        default=None,
+        help=argparse.SUPPRESS
+    )
