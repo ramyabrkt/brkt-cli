@@ -130,13 +130,9 @@ def setup_encrypt_ami_args(parser):
     parser.add_argument(
         '--crypto',
         dest='crypto',
-<<<<<<< HEAD
         required=False,
         help=argparse.SUPPRESS,
         default='gcm'
-=======
-        required=False
->>>>>>> d053007937ba6b5451c9f37e35b5e84c850131bd
     )
 
     # Optional argument for development: if encryption fails, keep the
