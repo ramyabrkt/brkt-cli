@@ -102,7 +102,11 @@ def setup_encrypt_gce_image_args(parser, parsed_config):
     parser.add_argument(
         '--crypto',
         dest='crypto',
+<<<<<<< HEAD
         required=False,
 	default='gcm',
         help=argparse.SUPPRESS
+=======
+        required=False
+>>>>>>> d053007937ba6b5451c9f37e35b5e84c850131bd
     )
